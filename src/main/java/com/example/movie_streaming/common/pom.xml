@@ -7,7 +7,7 @@
 		<groupId>com.example</groupId>
 		<artifactId>movie-streaming</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
-		<relativePath>../../../../../../../pom.xml</relativePath> <!-- Chỉnh đúng path tới POM cha -->
+		<relativePath>../../../../../../../pom.xml</relativePath> <!-- Đường dẫn đến pom cha -->
 	</parent>
 
 	<artifactId>common</artifactId>
@@ -16,14 +16,14 @@
 	<description>Common library for microservices</description>
 
 	<dependencies>
-		<!-- Lombok -->
+		<!-- Lombok (dùng annotation như @Data, @Builder, ...) -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
 
-		<!-- Spring Boot Starter Validation -->
+		<!-- Spring Validation -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
@@ -36,17 +36,16 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Spring Boot Core -->
+		<!-- Spring Core (các annotation @Component, @Value...) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>
 
-		<!-- Kafka -->
+		<!-- Kafka support nếu có DTO/kết nối chung -->
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
 			<artifactId>spring-kafka</artifactId>
 		</dependency>
 	</dependencies>
-
 </project>
