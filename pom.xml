@@ -10,11 +10,16 @@
 	<name>movie-streaming</name>
 	<description>Movie Streaming Microservices System</description>
 
-	<!-- Các modules của dự án -->
 	<modules>
 		<module>src/main/java/com/example/movie_streaming/common</module>
 		<module>src/main/java/com/example/movie_streaming/demoService</module>
-		<!-- Thêm các module khác nếu có -->
+		<module>src/main/java/com/example/movie_streaming/errorService</module>
+		<module>src/main/java/com/example/movie_streaming/metaService</module>
+		<module>src/main/java/com/example/movie_streaming/movieService</module>
+		<module>src/main/java/com/example/movie_streaming/actorService</module>
+		<module>src/main/java/com/example/movie_streaming/seriesService</module>
+		<module>src/main/java/com/example/movie_streaming/streamService</module>
+		<module>src/main/java/com/example/movie_streaming/userService</module>
 	</modules>
 
 	<properties>
@@ -25,10 +30,8 @@
 		<postgresql.version>42.6.0</postgresql.version>
 	</properties>
 
-
 	<dependencyManagement>
 		<dependencies>
-			<!-- Spring Boot BOM -->
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-dependencies</artifactId>
@@ -37,7 +40,6 @@
 				<scope>import</scope>
 			</dependency>
 
-			<!-- Spring Cloud BOM -->
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
@@ -46,41 +48,23 @@
 				<scope>import</scope>
 			</dependency>
 
-			<!-- PostgreSQL Driver -->
 			<dependency>
 				<groupId>org.postgresql</groupId>
 				<artifactId>postgresql</artifactId>
 				<version>${postgresql.version}</version>
 			</dependency>
 
-			<!-- Lombok -->
 			<dependency>
 				<groupId>org.projectlombok</groupId>
 				<artifactId>lombok</artifactId>
 				<version>${lombok.version}</version>
 			</dependency>
-
-			<!-- Kafka dependencies -->
-			<dependency>
-				<groupId>org.springframework.kafka</groupId>
-				<artifactId>spring-kafka</artifactId>
-				<version>3.0.0</version> <!-- Cập nhật phiên bản của spring-kafka nếu cần -->
-			</dependency>
-
-			<!-- Kafka Clients Dependency -->
-			<dependency>
-				<groupId>org.apache.kafka</groupId>
-				<artifactId>kafka-clients</artifactId>
-				<version>3.1.0</version> <!-- Cập nhật phiên bản của kafka-clients nếu cần -->
-			</dependency>
-
 		</dependencies>
 	</dependencyManagement>
 
 	<build>
 		<pluginManagement>
 			<plugins>
-				<!-- Maven Compiler Plugin -->
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
@@ -88,7 +72,6 @@
 					<configuration>
 						<source>${java.version}</source>
 						<target>${java.version}</target>
-						<!-- Ensure annotation processing is handled correctly -->
 						<annotationProcessorPaths>
 							<path>
 								<groupId>org.projectlombok</groupId>
@@ -99,7 +82,6 @@
 					</configuration>
 				</plugin>
 
-				<!-- Spring Boot Plugin -->
 				<plugin>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>

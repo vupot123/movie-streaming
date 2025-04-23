@@ -1,4 +1,4 @@
-package com.example.movie_streaming.shared.kafka;
+package com.example.actorService.kafka;
 
 import java.util.Map;
 
