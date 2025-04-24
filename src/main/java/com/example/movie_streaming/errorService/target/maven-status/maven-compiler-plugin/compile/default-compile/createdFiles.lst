@@ -1,0 +1,3 @@
+com\example\errorService\kafka\KafkaProducerService.class
+com\example\errorService\kafka\KafkaConsumerService.class
+com\example\errorService\kafka\KafkaMessage.class
