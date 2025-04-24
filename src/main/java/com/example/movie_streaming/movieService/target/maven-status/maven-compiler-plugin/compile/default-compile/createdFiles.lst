@@ -1,0 +1,4 @@
+com\example\movieService\kafka\KafkaProducerService.class
+com\example\movieService\kafka\KafkaConsumerService.class
+com\example\movieService\kafka\KafkaMessage.class
+com\example\movieService\MovieServiceApplication.class

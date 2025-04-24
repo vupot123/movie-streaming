@@ -1,0 +1,4 @@
+com\example\userService\kafka\KafkaConsumerService.class
+com\example\userService\UserServiceApplication.class
+com\example\userService\kafka\KafkaProducerService.class
+com\example\userService\kafka\KafkaMessage.class
