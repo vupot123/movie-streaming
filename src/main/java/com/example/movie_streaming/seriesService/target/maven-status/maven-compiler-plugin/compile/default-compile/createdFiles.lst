@@ -1,0 +1,4 @@
+com\example\seriesService\SeriesServiceApplication.class
+com\example\seriesService\kafka\KafkaMessage.class
+com\example\seriesService\kafka\KafkaConsumerService.class
+com\example\seriesService\kafka\KafkaProducerService.class
