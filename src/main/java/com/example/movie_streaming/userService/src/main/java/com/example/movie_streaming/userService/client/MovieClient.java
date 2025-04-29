@@ -1,7 +1,7 @@
 package com.example.movie_streaming.userService.client;
 
-import com.example.movie_streaming.userService.exception.MovieServiceUnavailableException;
-import com.example.movie_streaming.userService.model.dto.response.ApiResponse;
+import com.example.movie_streaming.common.exceptions.MovieServiceUnavailableException;
+import com.example.movie_streaming.common.response.ApiResponse;
 import com.example.movie_streaming.userService.model.dto.response.MovieResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,23 +1,22 @@
 package com.example.movie_streaming.userService.service;
 
 import com.example.movie_streaming.userService.client.MovieClient;
-import com.example.movie_streaming.userService.model.dto.response.MovieResponse;
-import com.example.movie_streaming.userService.exception.DuplicateResourceException;
-import com.example.movie_streaming.userService.exception.InvalidCredentialsException;
-import com.example.movie_streaming.userService.exception.ResourceNotFoundException;
+import com.example.movie_streaming.userService.kafka.KafkaMessage;
+import com.example.movie_streaming.userService.kafka.KafkaProducerService;
 import com.example.movie_streaming.userService.model.dto.request.FavoriteRequest;
-import com.example.movie_streaming.userService.model.dto.request.RegisterRequest;
 import com.example.movie_streaming.userService.model.dto.request.LoginRequest;
+import com.example.movie_streaming.userService.model.dto.request.RegisterRequest;
+import com.example.movie_streaming.userService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.userService.model.entity.Favorite;
 import com.example.movie_streaming.userService.model.entity.User;
 import com.example.movie_streaming.userService.repository.FavoriteRepository;
 import com.example.movie_streaming.userService.repository.UserRepository;
-import com.example.movie_streaming.userService.kafka.KafkaMessage;
-import com.example.movie_streaming.userService.kafka.KafkaProducerService;
 import com.example.movie_streaming.userService.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
+import com.example.movie_streaming.common.exceptions.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 
 @Service

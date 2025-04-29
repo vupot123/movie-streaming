@@ -1,13 +1,17 @@
 package com.example.movie_streaming.movieService.controller;
 
-import com.example.movie_streaming.movieService.model.dto.response.ApiResponse;
+import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
+import com.example.movie_streaming.common.response.ApiResponse;
+import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
+import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.movieService.service.MovieService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/movies")
@@ -16,14 +20,81 @@ public class MovieController {
 
     private final MovieService movieService;
 
+    @PostMapping
+    public ResponseEntity<ApiResponse<?>> createMovie(@RequestBody CreateMovieRequest request) {
+        try {
+            MovieResponse createdMovie = movieService.createMovie(request);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie created successfully", createdMovie));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to create movie: " + e.getMessage(), null));
+        }
+    }
+
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<MovieResponse>> getMovieById(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<?>> getMovieById(@PathVariable Long id) {
         try {
             MovieResponse movie = movieService.getMovieById(id);
-            ApiResponse<MovieResponse> response = new ApiResponse<>(200, "Success", movie);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Movie not found");
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie fetched successfully", movie));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to fetch movie: " + e.getMessage(), null));
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<?>> getAllMovies() {
+        try {
+            List<MovieResponse> movies = movieService.getAllMovies();
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movies fetched successfully", movies));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to fetch movies: " + e.getMessage(), null));
+        }
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> updateMovie(@PathVariable Long id, @RequestBody UpdateMovieRequest request) {
+        try {
+            MovieResponse updatedMovie = movieService.updateMovie(id, request);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie updated successfully", updatedMovie));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to update movie: " + e.getMessage(), null));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> deleteMovie(@PathVariable Long id) {
+        try {
+            movieService.deleteMovie(id);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie deleted successfully", null));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to delete movie: " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/{id}/views")
+    public ResponseEntity<ApiResponse<?>> addView(@PathVariable Long id) {
+        try {
+            movieService.addView(id);
+            return ResponseEntity.ok(new ApiResponse<>(200, "View added successfully", null));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to add view: " + e.getMessage(), null));
         }
     }
 }

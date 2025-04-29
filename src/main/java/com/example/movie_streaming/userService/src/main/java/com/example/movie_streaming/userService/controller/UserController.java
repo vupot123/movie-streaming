@@ -3,7 +3,7 @@ package com.example.movie_streaming.userService.controller;
 import com.example.movie_streaming.userService.model.dto.request.FavoriteRequest;
 import com.example.movie_streaming.userService.model.dto.request.RegisterRequest;
 import com.example.movie_streaming.userService.model.dto.request.LoginRequest;
-import com.example.movie_streaming.userService.model.dto.response.ApiResponse;
+import com.example.movie_streaming.common.response.ApiResponse;
 import com.example.movie_streaming.userService.model.dto.response.JwtResponse;
 import com.example.movie_streaming.userService.model.entity.Favorite;
 import com.example.movie_streaming.userService.service.UserService;

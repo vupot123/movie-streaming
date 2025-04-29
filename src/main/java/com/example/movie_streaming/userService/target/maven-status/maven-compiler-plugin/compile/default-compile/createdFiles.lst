@@ -5,15 +5,12 @@ com\example\movie_streaming\userService\kafka\KafkaProducerService.class
 com\example\movie_streaming\userService\kafka\KafkaProducerConfig.class
 com\example\movie_streaming\userService\client\MovieClient$1.class
 com\example\movie_streaming\userService\client\MovieClient.class
-com\example\movie_streaming\userService\exception\GlobalExceptionHandler.class
 com\example\movie_streaming\userService\kafka\KafkaConsumerService.class
 com\example\movie_streaming\userService\repository\UserRepository.class
-com\example\movie_streaming\userService\exception\DuplicateResourceException.class
 com\example\movie_streaming\userService\controller\UserController.class
 com\example\movie_streaming\userService\security\SecurityConfig$JwtAuthenticationFilter.class
 com\example\movie_streaming\userService\model\entity\Favorite.class
 com\example\movie_streaming\userService\UserServiceApplication.class
-com\example\movie_streaming\userService\exception\MovieServiceUnavailableException.class
 com\example\movie_streaming\userService\model\dto\request\RegisterRequest.class
 com\example\movie_streaming\userService\model\dto\response\ApiResponse.class
 com\example\movie_streaming\userService\model\dto\request\FavoriteRequest.class
@@ -21,8 +18,6 @@ com\example\movie_streaming\userService\model\dto\response\JwtResponse.class
 com\example\movie_streaming\userService\model\entity\User$UserBuilder.class
 com\example\movie_streaming\userService\kafka\KafkaMessage.class
 com\example\movie_streaming\userService\security\JwtProvider.class
-com\example\movie_streaming\userService\exception\InvalidCredentialsException.class
-com\example\movie_streaming\userService\exception\ResourceNotFoundException.class
 com\example\movie_streaming\userService\config\RestTemplateConfig.class
 com\example\movie_streaming\userService\service\UserService.class
 com\example\movie_streaming\userService\model\dto\request\LoginRequest.class
