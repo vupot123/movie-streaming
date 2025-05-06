@@ -1,8 +1,13 @@
 package com.example.movie_streaming.movieService.controller;
 
-import com.example.movie_streaming.movieService.model.dto.MovieDto;
-import com.example.movie_streaming.movieService.model.entity.Movie;
+import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
+import com.example.movie_streaming.common.response.ApiResponse;
+import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
+import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
+import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.movieService.service.MovieService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,42 +15,86 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/movies")
+@RequiredArgsConstructor
 public class MovieController {
 
     private final MovieService movieService;
 
-    public MovieController(MovieService movieService) {
-        this.movieService = movieService;
-    }
-
-    // API để lấy tất cả phim (trả về danh sách MovieDto)
-    @GetMapping
-    public List<MovieDto> getAllMovies() {
-        return movieService.getAllMovies();
-    }
-
-    // API để lấy thông tin một bộ phim theo ID (trả về MovieDto)
-    @GetMapping("/{id}")
-    public ResponseEntity<MovieDto> getMovieById(@PathVariable Long id) {
-        return ResponseEntity.ok(movieService.getMovieById(id));
-    }
-
-    // API để thêm một bộ phim mới (dùng MovieDto)
     @PostMapping
-    public ResponseEntity<MovieDto> addMovie(@RequestBody MovieDto movieDto) {
-        return ResponseEntity.ok(movieService.addMovie(movieDto));
+    public ResponseEntity<ApiResponse<?>> createMovie(@RequestBody CreateMovieRequest request) {
+        try {
+            MovieResponse createdMovie = movieService.createMovie(request);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie created successfully", createdMovie));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to create movie: " + e.getMessage(), null));
+        }
     }
 
-    // API để cập nhật thông tin phim (dùng MovieDto)
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> getMovieById(@PathVariable("id") Long id) {
+        try {
+            MovieResponse movie = movieService.getMovieById(id);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie fetched successfully", movie));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to fetch movie: " + e.getMessage(), null));
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<?>> getAllMovies() {
+        try {
+            List<MovieResponse> movies = movieService.getAllMovies();
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movies fetched successfully", movies));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to fetch movies: " + e.getMessage(), null));
+        }
+    }
+
     @PutMapping("/{id}")
-    public ResponseEntity<MovieDto> updateMovie(@PathVariable Long id, @RequestBody MovieDto movieDto) {
-        return ResponseEntity.ok(movieService.updateMovie(id, movieDto));
+    public ResponseEntity<ApiResponse<?>> updateMovie(@PathVariable("id") Long id, @RequestBody UpdateMovieRequest request) {
+        try {
+            MovieResponse updatedMovie = movieService.updateMovie(id, request);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie updated successfully", updatedMovie));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to update movie: " + e.getMessage(), null));
+        }
     }
 
-    // API để tăng lượt xem cho một bộ phim
-    @PostMapping("/{id}/view")
-    public ResponseEntity<Void> addView(@PathVariable Long id) {
-        movieService.addView(id);
-        return ResponseEntity.ok().build();
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<?>> deleteMovie(@PathVariable("id") Long id) {
+        try {
+            movieService.deleteMovie(id);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Movie deleted successfully", null));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to delete movie: " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/{id}/views")
+    public ResponseEntity<ApiResponse<?>> addView(@PathVariable("id") Long id) {
+        try {
+            movieService.addView(id);
+            return ResponseEntity.ok(new ApiResponse<>(200, "View added successfully", null));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to add view: " + e.getMessage(), null));
+        }
     }
 }

@@ -1,0 +1,52 @@
+@echo off
+setlocal
+
+echo ==============================
+echo BUILD MAVEN PROJECT
+echo ==============================
+mvn clean install
+
+if %errorlevel% neq 0 (
+    echo Maven build failed!
+    pause
+    exit /b %errorlevel%
+)
+
+echo ==============================
+echo START DOCKER DESKTOP CHECK
+echo ==============================
+
+:: Kiểm tra Docker Engine đang chạy chưa
+docker info >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Docker Engine not running. Please open Docker Desktop first!
+    pause
+    exit /b %errorlevel%
+)
+
+echo ==============================
+echo DOCKER COMPOSE BUILD
+echo ==============================
+docker-compose build
+
+if %errorlevel% neq 0 (
+    echo Docker compose build failed!
+    pause
+    exit /b %errorlevel%
+)
+
+echo ==============================
+echo DOCKER COMPOSE UP
+echo ==============================
+docker-compose up -d
+
+if %errorlevel% neq 0 (
+    echo Docker compose up failed!
+    pause
+    exit /b %errorlevel%
+)
+
+echo ==============================
+echo ALL DONE SUCCESSFULLY!
+echo ==============================
+pause
