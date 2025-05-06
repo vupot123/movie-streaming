@@ -1,10 +1,11 @@
+D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\dto\request\UpdateMovieRequest.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\repository\MovieRepository.java
+D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\dto\request\CreateMovieRequest.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\entity\MovieTrailer.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\kafka\KafkaConsumerService.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\kafka\KafkaProducerService.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\entity\MovieBanner.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\dto\response\MovieBannerResponse.java
-D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\dto\response\ApiResponse.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\entity\Movie.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\MovieServiceApplication.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\controller\MovieController.java
@@ -13,3 +14,4 @@ D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\ma
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\entity\MovieType.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\model\entity\MovieView.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\service\MovieService.java
+D:\movie-streaming\src\main\java\com\example\movie_streaming\movieService\src\main\java\com\example\movie_streaming\movieService\security\SecurityConfig.java

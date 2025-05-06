@@ -1,8 +1,11 @@
 com\example\movie_streaming\common\configuration\CommonConfig.class
 com\example\movie_streaming\common\response\ApiResponse.class
 com\example\movie_streaming\common\exceptions\InvalidCredentialsException.class
+com\example\movie_streaming\common\security\JwtAuthenticationFilter.class
 com\example\movie_streaming\common\exceptions\MovieServiceUnavailableException.class
+com\example\movie_streaming\common\security\JwtProvider.class
 com\example\movie_streaming\common\exceptions\EXDemo$DemoException.class
+com\example\movie_streaming\common\configuration\JwtProperties.class
 com\example\movie_streaming\common\exceptions\GlobalExceptionHandler.class
 com\example\movie_streaming\common\exceptions\DuplicateResourceException.class
 com\example\movie_streaming\common\exceptions\EXDemo.class

@@ -1,4 +1,3 @@
-D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\model\dto\response\ApiResponse.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\kafka\KafkaMessage.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\model\dto\request\FavoriteRequest.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\model\dto\response\MovieResponse.java
@@ -14,8 +13,6 @@ D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\mai
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\repository\UserRepository.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\model\dto\response\JwtResponse.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\UserServiceApplication.java
-D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\config\RestTemplateConfig.java
-D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\security\JwtProvider.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\repository\FavoriteRepository.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\kafka\KafkaProducerConfig.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\security\SecurityConfig.java

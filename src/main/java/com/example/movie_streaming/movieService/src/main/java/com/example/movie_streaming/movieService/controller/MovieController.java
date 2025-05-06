@@ -32,7 +32,7 @@ public class MovieController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> getMovieById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<?>> getMovieById(@PathVariable("id") Long id) {
         try {
             MovieResponse movie = movieService.getMovieById(id);
             return ResponseEntity.ok(new ApiResponse<>(200, "Movie fetched successfully", movie));
@@ -57,7 +57,7 @@ public class MovieController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> updateMovie(@PathVariable Long id, @RequestBody UpdateMovieRequest request) {
+    public ResponseEntity<ApiResponse<?>> updateMovie(@PathVariable("id") Long id, @RequestBody UpdateMovieRequest request) {
         try {
             MovieResponse updatedMovie = movieService.updateMovie(id, request);
             return ResponseEntity.ok(new ApiResponse<>(200, "Movie updated successfully", updatedMovie));
@@ -71,7 +71,7 @@ public class MovieController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> deleteMovie(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<?>> deleteMovie(@PathVariable("id") Long id) {
         try {
             movieService.deleteMovie(id);
             return ResponseEntity.ok(new ApiResponse<>(200, "Movie deleted successfully", null));
@@ -85,7 +85,7 @@ public class MovieController {
     }
 
     @PostMapping("/{id}/views")
-    public ResponseEntity<ApiResponse<?>> addView(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<?>> addView(@PathVariable("id") Long id) {
         try {
             movieService.addView(id);
             return ResponseEntity.ok(new ApiResponse<>(200, "View added successfully", null));

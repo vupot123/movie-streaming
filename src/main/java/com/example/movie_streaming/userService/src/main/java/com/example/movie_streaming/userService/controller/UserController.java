@@ -7,7 +7,7 @@ import com.example.movie_streaming.common.response.ApiResponse;
 import com.example.movie_streaming.userService.model.dto.response.JwtResponse;
 import com.example.movie_streaming.userService.model.entity.Favorite;
 import com.example.movie_streaming.userService.service.UserService;
-import com.example.movie_streaming.userService.security.JwtProvider;
+import com.example.movie_streaming.common.security.JwtProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +21,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final JwtProvider jwtProvider;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest request) {
@@ -30,6 +31,7 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<JwtResponse>> login(@RequestBody LoginRequest request) {
+        System.out.println("Login endpoint hit with username = " + request.getUsername());
         String token = userService.login(request);
         return ResponseEntity.ok(new ApiResponse<>(200, "Login successful", new JwtResponse(token)));
     }
@@ -50,7 +52,8 @@ public class UserController {
 
     private String extractUsernameFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization").substring(7);
-        return JwtProvider.getUsernameFromToken(token);
+        return jwtProvider.getUsernameFromToken(token); // ✅ dùng instance method
     }
+
 }
 
