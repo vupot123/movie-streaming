@@ -4,6 +4,7 @@ D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\mai
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\model\entity\User.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\controller\UserController.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\model\entity\Favorite.java
+D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\kafka\KafkaConsumerConfig.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\client\MovieClient.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\model\dto\request\RegisterRequest.java
 D:\movie-streaming\src\main\java\com\example\movie_streaming\userService\src\main\java\com\example\movie_streaming\userService\kafka\KafkaConsumerService.java

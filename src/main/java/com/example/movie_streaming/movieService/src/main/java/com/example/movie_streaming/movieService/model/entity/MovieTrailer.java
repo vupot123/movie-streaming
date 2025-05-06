@@ -4,17 +4,22 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
+@Table(name = "movie_trailers")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "movie_trailers")
 public class MovieTrailer {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long movieId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "movie_id", nullable = false)
+    private Movie movie;
+
+    @Column(columnDefinition = "TEXT")
     private String url;
 }
+
