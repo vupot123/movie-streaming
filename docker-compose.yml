@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   zookeeper:
     image: wurstmeister/zookeeper:latest
@@ -25,22 +27,8 @@ services:
     networks:
       - kafka-net
 
-  user-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/userService
-      dockerfile: Dockerfile
-    container_name: user-service
-    ports:
-      - "8083:8083"
-    depends_on:
-      - kafka
-    networks:
-      - kafka-net
-
   actor-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/actorService
-      dockerfile: Dockerfile
+    build: src/main/java/com/example/movie_streaming/actorService
     container_name: actor-service
     ports:
       - "8081:8081"
@@ -50,9 +38,7 @@ services:
       - kafka-net
 
   movie-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/movieService
-      dockerfile: Dockerfile
+    build: src/main/java/com/example/movie_streaming/movieService
     container_name: movie-service
     ports:
       - "8082:8082"
@@ -61,10 +47,18 @@ services:
     networks:
       - kafka-net
 
+  user-service:
+    build: src/main/java/com/example/movie_streaming/userService
+    container_name: user-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-net
+
   demo-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/demoService
-      dockerfile: Dockerfile
+    build: src/main/java/com/example/movie_streaming/demoService
     container_name: demo-service
     ports:
       - "8090:8090"
@@ -74,9 +68,7 @@ services:
       - kafka-net
 
   error-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/errorService
-      dockerfile: Dockerfile
+    build: src/main/java/com/example/movie_streaming/errorService
     container_name: error-service
     ports:
       - "8084:8084"
@@ -86,9 +78,7 @@ services:
       - kafka-net
 
   meta-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/metaService
-      dockerfile: Dockerfile
+    build: src/main/java/com/example/movie_streaming/metaService
     container_name: meta-service
     ports:
       - "8085:8085"
@@ -97,10 +87,19 @@ services:
     networks:
       - kafka-net
 
+
+  upload-service:
+    build: src/main/java/com/example/movie_streaming/uploadService
+    container_name: upload-service
+    ports:
+      - "8100:8100"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-net
+
   series-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/seriesService
-      dockerfile: Dockerfile
+    build: src/main/java/com/example/movie_streaming/seriesService
     container_name: series-service
     ports:
       - "8086:8086"
@@ -110,9 +109,7 @@ services:
       - kafka-net
 
   stream-service:
-    build:
-      context: ./src/main/java/com/example/movie_streaming/streamService
-      dockerfile: Dockerfile
+    build: src/main/java/com/example/movie_streaming/streamService
     container_name: stream-service
     ports:
       - "8087:8087"

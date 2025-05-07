@@ -20,6 +20,7 @@
 		<module>src/main/java/com/example/movie_streaming/seriesService</module>
 		<module>src/main/java/com/example/movie_streaming/streamService</module>
 		<module>src/main/java/com/example/movie_streaming/userService</module>
+		<module>src/main/java/com/example/movie_streaming/uploadService</module>
 	</modules>
 
 	<properties>
