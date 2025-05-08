@@ -8,7 +8,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MovieBannerResponse {
+    private Long id;
     private Long movieId;
-    private String smallBannerUrl;
-    private String largeBannerUrl;
+    private String smallBanner;
+    private String largeBanner;
 }

@@ -6,15 +6,22 @@ import lombok.*;
 @Entity
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "movie_banners")
 public class MovieBanner {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Long movieId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "movie_id", nullable = false)
+    private Movie movie;
+
+    @Column(name = "small_banner", columnDefinition = "text", nullable = false)
     private String smallBanner;
+
+    @Column(name = "large_banner", columnDefinition = "text", nullable = false)
     private String largeBanner;
 }
