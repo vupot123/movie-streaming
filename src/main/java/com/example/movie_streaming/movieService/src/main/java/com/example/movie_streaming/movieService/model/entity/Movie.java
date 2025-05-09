@@ -3,6 +3,8 @@ package com.example.movie_streaming.movieService.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Entity
 @Getter
 @Setter
@@ -19,12 +21,22 @@ public class Movie {
     private String title;
 
     @Enumerated(EnumType.STRING)
-    private MovieType type; // enum: 'le' hoặc 'bo'
+    private MovieType type;
 
     private Integer year;
     private Integer duration;
     private String intro;
     private String ageRating;
 
-    private Long views = 0L; // default: 0
+    private Long views = 0L;
+
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MovieGenre> movieGenres;
+
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MovieCountry> movieCountries;
+
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MovieActor> movieActors;
+
 }

@@ -1,0 +1,24 @@
+package com.example.movie_streaming.movieService.model.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+@Entity
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "movie_actors")
+public class MovieActor {
+    @EmbeddedId
+    private MovieActorId id;
+
+    @ManyToOne @MapsId("movieId")
+    @JoinColumn(name = "movie_id")
+    private Movie movie;
+
+    @ManyToOne @MapsId("actorId")
+    @JoinColumn(name = "actor_id")
+    private Actor actor;
+}
+

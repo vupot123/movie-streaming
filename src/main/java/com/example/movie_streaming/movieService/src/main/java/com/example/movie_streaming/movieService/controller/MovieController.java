@@ -3,10 +3,12 @@ package com.example.movie_streaming.movieService.controller;
 import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
 import com.example.movie_streaming.common.response.ApiResponse;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
+import com.example.movie_streaming.movieService.model.dto.request.MovieFilterRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.movieService.service.MovieService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,7 +59,8 @@ public class MovieController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<?>> updateMovie(@PathVariable("id") Long id, @RequestBody UpdateMovieRequest request) {
+    public ResponseEntity<ApiResponse<?>> updateMovie(@PathVariable("id") Long id,
+                                                      @RequestBody UpdateMovieRequest request) {
         try {
             MovieResponse updatedMovie = movieService.updateMovie(id, request);
             return ResponseEntity.ok(new ApiResponse<>(200, "Movie updated successfully", updatedMovie));
@@ -97,4 +100,27 @@ public class MovieController {
                     .body(new ApiResponse<>(500, "Failed to add view: " + e.getMessage(), null));
         }
     }
+
+    @GetMapping("/filter")
+    public ResponseEntity<ApiResponse<Page<MovieResponse>>> filterMovies(MovieFilterRequest request) {
+        try {
+            Page<MovieResponse> result = movieService.filterMovies(request);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Filtered movies successfully", result));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Failed to filter movies: " + e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<?>> searchMovies(@RequestParam("keyword") String keyword) {
+        try {
+            List<MovieResponse> result = movieService.searchMovies(keyword);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Search success", result));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Search failed: " + e.getMessage(), null));
+        }
+    }
+
 }

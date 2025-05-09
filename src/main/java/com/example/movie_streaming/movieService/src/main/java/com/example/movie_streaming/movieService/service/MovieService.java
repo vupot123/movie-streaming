@@ -1,46 +1,62 @@
 package com.example.movie_streaming.movieService.service;
 
-import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
-import com.example.movie_streaming.movieService.model.entity.Movie;
-import com.example.movie_streaming.movieService.repository.MovieRepository;
-import lombok.RequiredArgsConstructor;
-import com.example.movie_streaming.common.exceptions.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
+import com.example.movie_streaming.movieService.kafka.KafkaMessage;
 import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
-import java.util.List;
-import java.util.stream.Collectors;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
+import com.example.movie_streaming.movieService.model.dto.request.MovieFilterRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
-import com.example.movie_streaming.movieService.model.entity.MovieType;
+import com.example.movie_streaming.movieService.model.dto.response.*;
+import com.example.movie_streaming.movieService.model.entity.*;
+import com.example.movie_streaming.movieService.repository.*;
+import com.example.movie_streaming.movieService.specification.MovieSpecification;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class MovieService {
 
     private final MovieRepository movieRepository;
-
+    private final MovieTrailerRepository trailerRepository;
+    private final MovieBannerRepository bannerRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final MovieActorRepository movieActorRepository;
+
+    public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
+        Pageable pageable = PageRequest.of(
+                request.getPage() != null ? request.getPage() - 1 : 0,
+                request.getSize() != null ? request.getSize() : 20
+        );
+
+        Page<Movie> movies = movieRepository.findAll(new MovieSpecification(request), pageable);
+        return movies.map(this::toResponse);
+    }
 
     public MovieResponse getMovieById(Long id) {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
-
-        return toDto(movie);
+        return toResponse(movie);
     }
 
     public List<MovieResponse> getAllMovies() {
         return movieRepository.findAll()
                 .stream()
-                .map(this::toDto)
+                .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     public MovieResponse createMovie(CreateMovieRequest request) {
         Movie movie = Movie.builder()
                 .title(request.getTitle())
-                .type(MovieType.valueOf(request.getType()))
+                .type(MovieType.fromString(request.getType()))
                 .year(request.getYear())
                 .duration(request.getDuration())
                 .intro(request.getIntro())
@@ -50,20 +66,20 @@ public class MovieService {
 
         Movie savedMovie = movieRepository.save(movie);
 
-        // Kafka event
-        kafkaProducerService.sendMessage("movie-topic", "New movie added: " + savedMovie.getTitle());
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "movie", "CREATE", savedMovie.getId(),
+                Map.of("title", savedMovie.getTitle())
+        ));
 
-        return toDto(savedMovie);
+        return toResponse(savedMovie);
     }
-
 
     public MovieResponse updateMovie(Long id, UpdateMovieRequest request) {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
 
-        movie.setId(id);
         movie.setTitle(request.getTitle());
-        movie.setType(MovieType.valueOf(request.getType()));
+        movie.setType(MovieType.fromString(request.getType()));
         movie.setYear(request.getYear());
         movie.setDuration(request.getDuration());
         movie.setIntro(request.getIntro());
@@ -71,16 +87,26 @@ public class MovieService {
         movie.setViews(request.getViews());
 
         Movie updated = movieRepository.save(movie);
-        kafkaProducerService.sendMessage("movie-topic", "Movie with ID " + id + " has been updated");
 
-        return toDto(updated);
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "movie", "UPDATE", updated.getId(),
+                Map.of("title", updated.getTitle())
+        ));
+
+        return toResponse(updated);
     }
 
     public void deleteMovie(Long id) {
         if (!movieRepository.existsById(id)) {
             throw new ResourceNotFoundException("Movie not found");
         }
+
         movieRepository.deleteById(id);
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "movie", "DELETE", id,
+                Map.of("deleted", true)
+        ));
     }
 
     public void addView(Long id) {
@@ -89,21 +115,53 @@ public class MovieService {
         movie.setViews(movie.getViews() + 1);
         movieRepository.save(movie);
 
-        String message = "Movie with ID " + id + " has been viewed";
-        kafkaProducerService.sendMessage("movie-topic", message);
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "movie", "VIEW", id,
+                Map.of("views", movie.getViews())
+        ));
     }
 
-    private MovieResponse toDto(Movie movie) {
+    public List<MovieResponse> searchMovies(String keyword) {
+        List<Movie> movies = movieRepository.searchByTitleOrActorName(keyword);
+        if (movies.isEmpty()) {
+            throw new ResourceNotFoundException("No movies found with keyword: " + keyword);
+        }
+
+        return movies.stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public MovieResponse toResponse(Movie movie) {
+        List<MovieTrailer> trailers = trailerRepository.findByMovieId(movie.getId());
+        List<MovieBanner> banners = bannerRepository.findByMovieId(movie.getId());
+        List<MovieActor> actors = movieActorRepository.findByMovieId(movie.getId());
+
+        List<ActorResponse> actorResponses = actors.stream()
+                .map(a -> new ActorResponse(a.getActor().getId(), a.getActor().getName()))
+                .collect(Collectors.toList());
+
         return MovieResponse.builder()
                 .id(movie.getId())
-                .title(movie.getTitle() != null ? movie.getTitle() : "Unknown")
-                .type(movie.getType() != null ? movie.getType().name() : "le")
-                .year(movie.getYear() != null ? movie.getYear() : 2000)
-                .duration(movie.getDuration() != null ? movie.getDuration() : 0)
-                .intro(movie.getIntro() != null ? movie.getIntro() : "")
-                .ageRating(movie.getAgeRating() != null ? movie.getAgeRating() : "N/A")
-                .views(movie.getViews() != null ? movie.getViews() : 0L)
+                .title(movie.getTitle())
+                .type(movie.getType().toString())
+                .year(movie.getYear())
+                .duration(movie.getDuration())
+                .intro(movie.getIntro())
+                .ageRating(movie.getAgeRating())
+                .views(movie.getViews())
+                .trailers(trailers.stream().map(trailer -> new MovieTrailerResponse(
+                        trailer.getId(),
+                        trailer.getMovie().getId(),
+                        trailer.getUrl()
+                )).collect(Collectors.toList()))
+                .banners(banners.stream().map(banner -> new MovieBannerResponse(
+                        banner.getId(),
+                        banner.getMovie().getId(),
+                        banner.getSmallBanner(),
+                        banner.getLargeBanner()
+                )).collect(Collectors.toList()))
+                .actors(actorResponses)
                 .build();
     }
-
 }

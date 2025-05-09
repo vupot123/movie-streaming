@@ -2,6 +2,8 @@ package com.example.movie_streaming.movieService.service;
 
 
 import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
+import com.example.movie_streaming.movieService.kafka.KafkaMessage;
+import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieBannerRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieBannerRequest;
 import com.example.movie_streaming.movieService.model.dto.response.MovieBannerResponse;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,8 @@ public class MovieBannerService {
 
     private final MovieBannerRepository bannerRepository;
     private final MovieRepository movieRepository;
+    private final KafkaProducerService kafkaProducerService;
+
 
     public MovieBannerResponse create(Long movieId, CreateMovieBannerRequest request) {
         Movie movie = movieRepository.findById(movieId)
@@ -30,6 +35,12 @@ public class MovieBannerService {
         banner.setMovie(movie);
         banner.setSmallBanner(request.getSmallBanner());
         banner.setLargeBanner(request.getLargeBanner());
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "banner", "CREATE", banner.getId(),
+                Map.of("movieId", movieId, "smallBanner", banner.getSmallBanner())
+        ));
+
 
         return toResponse(bannerRepository.save(banner));
     }
@@ -57,6 +68,12 @@ public class MovieBannerService {
         banner.setMovie(movie);
         banner.setSmallBanner(request.getSmallBanner());
         banner.setLargeBanner(request.getLargeBanner());
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "banner", "UPDATE", banner.getId(),
+                Map.of("movieId", banner.getMovie().getId(), "updated", true)
+        ));
+
 
         return toResponse(bannerRepository.save(banner));
     }

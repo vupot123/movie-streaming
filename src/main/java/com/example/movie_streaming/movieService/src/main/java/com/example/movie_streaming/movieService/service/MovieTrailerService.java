@@ -1,6 +1,8 @@
 package com.example.movie_streaming.movieService.service;
 
 import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
+import com.example.movie_streaming.movieService.kafka.KafkaMessage;
+import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieTrailerRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieTrailerRequest;
 import com.example.movie_streaming.movieService.model.dto.response.MovieTrailerResponse;
@@ -12,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +23,8 @@ public class MovieTrailerService {
 
     private final MovieTrailerRepository trailerRepository;
     private final MovieRepository movieRepository;
+    private final KafkaProducerService kafkaProducerService;
+
 
     public MovieTrailerResponse create(Long movieId, CreateMovieTrailerRequest request) {
         Movie movie = movieRepository.findById(movieId)
@@ -28,6 +33,12 @@ public class MovieTrailerService {
         MovieTrailer trailer = new MovieTrailer();
         trailer.setMovie(movie);
         trailer.setUrl(request.getUrl());
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "banner", "CREATE", trailer.getId(),
+                Map.of("movieId", movieId, "trailerUrl", trailer.getUrl())
+        ));
+
 
         trailer = trailerRepository.save(trailer);
         return toResponse(trailer);
@@ -55,6 +66,11 @@ public class MovieTrailerService {
 
         trailer.setMovie(movie);
         trailer.setUrl(request.getUrl());
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "banner", "CREATE", trailer.getId(),
+                Map.of("movieId", movie.getId(), "trailerUrl", trailer.getUrl())
+        ));
 
         return toResponse(trailerRepository.save(trailer));
     }

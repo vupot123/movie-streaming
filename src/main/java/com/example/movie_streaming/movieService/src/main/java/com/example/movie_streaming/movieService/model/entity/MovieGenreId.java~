@@ -1,0 +1,13 @@
+package com.example.movie_streaming.movieService.model.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+@Embeddable
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class MovieGenreId implements java.io.Serializable {
+    private Long movieId;
+    private Integer genreId;
+}

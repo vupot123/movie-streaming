@@ -27,6 +27,10 @@ public class User {
     @Column(length = 100)
     private String name;
 
+    // e Vux update database thì sửa lại chỗ này
+//    @Column(name = "role")
+//    private String role = "USER"; // mặc định
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 }

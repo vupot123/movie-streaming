@@ -15,7 +15,12 @@ public class MovieView {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "movie_id")
     private Long movieId;
+
+    @Column(name = "user_id")
     private Long userId;
+
+    @Column(name = "viewed_at")
     private java.sql.Timestamp viewedAt;
 }

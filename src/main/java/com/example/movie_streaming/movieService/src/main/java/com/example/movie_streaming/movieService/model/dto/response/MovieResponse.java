@@ -1,7 +1,8 @@
 package com.example.movie_streaming.movieService.model.dto.response;
 
-import com.example.movie_streaming.movieService.model.entity.MovieType;
 import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -17,4 +18,7 @@ public class MovieResponse {
     private String intro;
     private String ageRating;
     private Long views;
+    private List<MovieTrailerResponse> trailers;
+    private List<MovieBannerResponse> banners;
+    private List<ActorResponse> actors;
 }

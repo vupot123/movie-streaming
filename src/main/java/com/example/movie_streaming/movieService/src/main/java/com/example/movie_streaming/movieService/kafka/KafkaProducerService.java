@@ -18,9 +18,9 @@ import java.util.Map;
 @Slf4j
 public class KafkaProducerService {
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, KafkaMessage> kafkaTemplate;
 
-    public void sendMessage(String topic, String message) {
+    public void sendMessage(String topic, KafkaMessage message) {
         try {
             kafkaTemplate.send(topic, message);
             log.info("Kafka message sent successfully to topic {}: {}", topic, message);
@@ -29,3 +29,4 @@ public class KafkaProducerService {
         }
     }
 }
+

@@ -1,0 +1,90 @@
+package com.example.movie_streaming.movieService.service;
+
+
+import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
+import com.example.movie_streaming.movieService.kafka.KafkaMessage;
+import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
+import com.example.movie_streaming.movieService.model.dto.request.CreateMovieBannerRequest;
+import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieBannerRequest;
+import com.example.movie_streaming.movieService.model.dto.response.MovieBannerResponse;
+import com.example.movie_streaming.movieService.model.entity.Movie;
+import com.example.movie_streaming.movieService.model.entity.MovieBanner;
+import com.example.movie_streaming.movieService.repository.MovieBannerRepository;
+import com.example.movie_streaming.movieService.repository.MovieRepository;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+@Service
+@RequiredArgsConstructor
+public class MovieBannerService {
+
+    private final MovieBannerRepository bannerRepository;
+    private final MovieRepository movieRepository;
+    private final KafkaProducerService kafkaProducerService;
+
+
+    public MovieBannerResponse create(Long movieId, CreateMovieBannerRequest request) {
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with id: " + movieId));
+
+        MovieBanner banner = new MovieBanner();
+        banner.setMovie(movie);
+        banner.setSmallBanner(request.getSmallBanner());
+        banner.setLargeBanner(request.getLargeBanner());
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "banner", "CREATE", banner.getId(),
+                Map.of("movieId", movieId, "smallBanner", banner.getSmallBanner())
+        ));
+
+
+        return toResponse(bannerRepository.save(banner));
+    }
+
+    public List<MovieBannerResponse> getByMovieId(Long movieId) {
+        return bannerRepository.findByMovieId(movieId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public MovieBannerResponse getById(Long id) {
+        MovieBanner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Banner not found with id: " + id));
+        return toResponse(banner);
+    }
+
+    public MovieBannerResponse update(Long id, UpdateMovieBannerRequest request) {
+        MovieBanner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Banner not found with id: " + id));
+
+        Movie movie = movieRepository.findById(request.getMovieId())
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with id: " + request.getMovieId()));
+
+        banner.setMovie(movie);
+        banner.setSmallBanner(request.getSmallBanner());
+        banner.setLargeBanner(request.getLargeBanner());
+
+        return toResponse(bannerRepository.save(banner));
+    }
+
+    public void delete(Long id) {
+        if (!bannerRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Banner not found with id: " + id);
+        }
+        bannerRepository.deleteById(id);
+    }
+
+    private MovieBannerResponse toResponse(MovieBanner banner) {
+        return new MovieBannerResponse(
+                banner.getId(),
+                banner.getMovie().getId(),
+                banner.getSmallBanner(),
+                banner.getLargeBanner()
+        );
+    }
+}

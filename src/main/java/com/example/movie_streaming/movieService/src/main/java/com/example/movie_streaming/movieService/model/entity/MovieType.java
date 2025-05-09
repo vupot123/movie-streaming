@@ -1,5 +1,17 @@
 package com.example.movie_streaming.movieService.model.entity;
 
 public enum MovieType {
-    le, bo
+    BO, LE; // ví dụ
+
+    public static MovieType fromString(String value) {
+        for (MovieType type : values()) {
+            if (type.name().equalsIgnoreCase(value)) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Invalid MovieType: " + value);
+    }
 }
+
+
+
