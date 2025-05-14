@@ -21,4 +21,5 @@ public class MovieResponse {
     private List<MovieTrailerResponse> trailers;
     private List<MovieBannerResponse> banners;
     private List<ActorResponse> actors;
+    private SingleMovieStreamResponse stream;
 }

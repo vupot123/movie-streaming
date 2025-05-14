@@ -1,0 +1,55 @@
+package com.example.errorService.controller;
+
+import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
+import com.example.movie_streaming.common.response.ApiResponse;
+import com.example.errorService.model.dto.request.CreateErrorReportRequest;
+import com.example.errorService.model.dto.response.ErrorReportResponse;
+import com.example.errorService.model.entity.ErrorStatus;
+import com.example.errorService.service.ErrorReportService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/error-reports")
+@RequiredArgsConstructor
+public class ErrorReportController {
+
+    private final ErrorReportService errorReportService;
+
+    @PostMapping("/{movieId}")
+    public ResponseEntity<ErrorReportResponse> createReport(
+            @PathVariable Long movieId,
+            @RequestBody CreateErrorReportRequest request
+    ) {
+        try {
+            return ResponseEntity.ok(errorReportService.createReport(movieId, request));
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Không thể tạo báo lỗi cho movieId: " + movieId);
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<List<?>> getAllReports() {
+        try {
+            List<ErrorReportResponse> allReports = errorReportService.getAllReports();
+            return ResponseEntity.ok(new ApiResponse<>(200, "Fetched banners successfully", allReports));
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Không thể lấy danh sách báo lỗi");
+        }
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<ErrorReportResponse> updateStatus(
+            @PathVariable Long id,
+            @RequestParam ErrorStatus status
+    ) {
+        try {
+            return ResponseEntity.ok(errorReportService.updateStatus(id, status));
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("Không thể cập nhật trạng thái báo lỗi ID: " + id);
+        }
+    }
+}

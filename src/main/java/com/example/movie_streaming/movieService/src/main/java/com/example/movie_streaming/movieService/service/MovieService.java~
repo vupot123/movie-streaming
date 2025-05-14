@@ -29,6 +29,7 @@ public class MovieService {
     private final MovieBannerRepository bannerRepository;
     private final KafkaProducerService kafkaProducerService;
     private final MovieActorRepository movieActorRepository;
+    private final SingleMovieStreamRepository singleMovieStreamRepository;
 
     public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
         Pageable pageable = PageRequest.of(
@@ -79,7 +80,7 @@ public class MovieService {
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
 
         movie.setTitle(request.getTitle());
-        movie.setType(MovieType.valueOf(request.getType()));
+        movie.setType(MovieType.fromString(request.getType()));
         movie.setYear(request.getYear());
         movie.setDuration(request.getDuration());
         movie.setIntro(request.getIntro());
@@ -141,6 +142,14 @@ public class MovieService {
                 .map(a -> new ActorResponse(a.getActor().getId(), a.getActor().getName()))
                 .collect(Collectors.toList());
 
+        // ✅ Cách đúng để lấy streamResponse
+        SingleMovieStreamResponse streamResponse = singleMovieStreamRepository.findByMovieId(movie.getId())
+                .map(stream -> new SingleMovieStreamResponse(
+                        stream.getId(),
+                        stream.getFileName(),
+                        stream.getFileUrl()
+                )).orElse(null);
+
         return MovieResponse.builder()
                 .id(movie.getId())
                 .title(movie.getTitle())
@@ -162,6 +171,7 @@ public class MovieService {
                         banner.getLargeBanner()
                 )).collect(Collectors.toList()))
                 .actors(actorResponses)
+                .stream(streamResponse) // phải có .stream(SingleMovieStreamResponse)
                 .build();
     }
 }
