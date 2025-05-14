@@ -1,0 +1,5 @@
+package com.example.errorService.model.entity;
+
+
+public class ErrorStatus {
+}

@@ -1,7 +1,7 @@
 package com.example.movie_streaming.movieService.model.entity;
 
 public enum MovieType {
-    BO, LE; // ví dụ
+    bo, le;
 
     public static MovieType fromString(String value) {
         for (MovieType type : values()) {

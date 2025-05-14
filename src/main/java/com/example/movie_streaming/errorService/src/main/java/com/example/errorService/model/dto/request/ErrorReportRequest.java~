@@ -1,0 +1,4 @@
+package com.example.errorService.model.dto.request;
+
+public class ErrorReportRequest {
+}
