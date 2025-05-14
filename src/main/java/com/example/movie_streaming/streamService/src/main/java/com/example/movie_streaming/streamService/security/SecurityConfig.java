@@ -1,4 +1,4 @@
-package com.example.movie_streaming.uploadService.security;
+package com.example.movie_streaming.streamService.security;
 
 import com.example.movie_streaming.common.security.JwtAuthenticationFilter;
 import com.example.movie_streaming.common.security.JwtProvider;

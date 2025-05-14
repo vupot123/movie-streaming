@@ -1,4 +1,4 @@
-package com.example.streamService.kafka;
+package com.example.movie_streaming.streamService.kafka;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;

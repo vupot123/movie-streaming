@@ -88,16 +88,6 @@ services:
       - kafka-net
 
 
-  upload-service:
-    build: src/main/java/com/example/movie_streaming/uploadService
-    container_name: upload-service
-    ports:
-      - "8100:8100"
-    depends_on:
-      - kafka
-    networks:
-      - kafka-net
-
   series-service:
     build: src/main/java/com/example/movie_streaming/seriesService
     container_name: series-service
