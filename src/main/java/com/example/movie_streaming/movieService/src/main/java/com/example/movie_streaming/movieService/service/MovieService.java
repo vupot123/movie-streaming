@@ -5,23 +5,22 @@ import com.example.movie_streaming.movieService.model.entity.Movie;
 import com.example.movie_streaming.movieService.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import com.example.movie_streaming.common.exceptions.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
 import com.example.movie_streaming.movieService.model.entity.MovieType;
 
-
 @Service
 @RequiredArgsConstructor
 public class MovieService {
 
     private final MovieRepository movieRepository;
-
     private final KafkaProducerService kafkaProducerService;
+    private final ObjectMapper objectMapper;
 
     public MovieResponse getMovieById(Long id) {
         Movie movie = movieRepository.findById(id)
@@ -45,23 +44,25 @@ public class MovieService {
                 .duration(request.getDuration())
                 .intro(request.getIntro())
                 .ageRating(request.getAgeRating())
-                .views(request.getViews())
+                .views(request.getViews() != null ? request.getViews() : 0L)
                 .build();
 
-        Movie savedMovie = movieRepository.save(movie);
+        try {
+            // Chuyển movie thành JSON string
+            String movieJson = objectMapper.writeValueAsString(movie);
+            // Gửi JSON string qua Kafka
+            kafkaProducerService.sendMessage("movie-topic", "CREATE_MOVIE:" + movieJson);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send movie to Kafka: " + e.getMessage());
+        }
 
-        // Kafka event
-        kafkaProducerService.sendMessage("movie-topic", "New movie added: " + savedMovie.getTitle());
-
-        return toDto(savedMovie);
+        return toDto(movie);
     }
-
 
     public MovieResponse updateMovie(Long id, UpdateMovieRequest request) {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
 
-        movie.setId(id);
         movie.setTitle(request.getTitle());
         movie.setType(MovieType.valueOf(request.getType()));
         movie.setYear(request.getYear());
@@ -70,27 +71,38 @@ public class MovieService {
         movie.setAgeRating(request.getAgeRating());
         movie.setViews(request.getViews());
 
-        Movie updated = movieRepository.save(movie);
-        kafkaProducerService.sendMessage("movie-topic", "Movie with ID " + id + " has been updated");
+        try {
+            // Chuyển movie thành JSON string
+            String movieJson = objectMapper.writeValueAsString(movie);
+            // Gửi JSON string qua Kafka
+            kafkaProducerService.sendMessage("movie-topic", "UPDATE_MOVIE:" + movieJson);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send movie update to Kafka: " + e.getMessage());
+        }
 
-        return toDto(updated);
+        return toDto(movie);
     }
 
     public void deleteMovie(Long id) {
         if (!movieRepository.existsById(id)) {
             throw new ResourceNotFoundException("Movie not found");
         }
-        movieRepository.deleteById(id);
+        kafkaProducerService.sendMessage("movie-topic", "DELETE_MOVIE:" + id);
     }
 
     public void addView(Long id) {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found with ID: " + id));
         movie.setViews(movie.getViews() + 1);
-        movieRepository.save(movie);
 
-        String message = "Movie with ID " + id + " has been viewed";
-        kafkaProducerService.sendMessage("movie-topic", message);
+        try {
+            // Chuyển movie thành JSON string
+            String movieJson = objectMapper.writeValueAsString(movie);
+            // Gửi JSON string qua Kafka
+            kafkaProducerService.sendMessage("movie-topic", "VIEW_MOVIE:" + movieJson);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send view update to Kafka: " + e.getMessage());
+        }
     }
 
     private MovieResponse toDto(Movie movie) {
@@ -105,5 +117,4 @@ public class MovieService {
                 .views(movie.getViews() != null ? movie.getViews() : 0L)
                 .build();
     }
-
 }

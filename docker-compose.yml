@@ -27,15 +27,7 @@ services:
     networks:
       - kafka-net
 
-  actor-service:
-    build: src/main/java/com/example/movie_streaming/actorService
-    container_name: actor-service
-    ports:
-      - "8081:8081"
-    depends_on:
-      - kafka
-    networks:
-      - kafka-net
+
 
   movie-service:
     build: src/main/java/com/example/movie_streaming/movieService
@@ -57,52 +49,13 @@ services:
     networks:
       - kafka-net
 
-  demo-service:
-    build: src/main/java/com/example/movie_streaming/demoService
-    container_name: demo-service
-    ports:
-      - "8090:8090"
-    depends_on:
-      - kafka
-    networks:
-      - kafka-net
+
 
   error-service:
     build: src/main/java/com/example/movie_streaming/errorService
     container_name: error-service
     ports:
       - "8084:8084"
-    depends_on:
-      - kafka
-    networks:
-      - kafka-net
-
-  meta-service:
-    build: src/main/java/com/example/movie_streaming/metaService
-    container_name: meta-service
-    ports:
-      - "8085:8085"
-    depends_on:
-      - kafka
-    networks:
-      - kafka-net
-
-
-  upload-service:
-    build: src/main/java/com/example/movie_streaming/uploadService
-    container_name: upload-service
-    ports:
-      - "8100:8100"
-    depends_on:
-      - kafka
-    networks:
-      - kafka-net
-
-  series-service:
-    build: src/main/java/com/example/movie_streaming/seriesService
-    container_name: series-service
-    ports:
-      - "8086:8086"
     depends_on:
       - kafka
     networks:

@@ -1,4 +1,4 @@
-package com.example.movie_streaming.movieService.kafka;
+package com.example.movie_streaming.streamService.kafka;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
