@@ -26,7 +26,7 @@ public class MovieClient {
                     new TypeReference<ApiResponse<MovieResponse>>() {
                     }
             );
-            return response.getData(); // ✅ Lấy movie từ `data` field
+            return response.getData();
         } catch (Exception ex) {
             ex.printStackTrace(); // Tạm log để debug
             throw new MovieServiceUnavailableException("Movie service is unavailable.");

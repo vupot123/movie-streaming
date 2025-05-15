@@ -1,4 +1,4 @@
-//package com.example.movie_streaming.streamService.kafka;
+//package com.example.errorService.kafka;
 //
 //import org.apache.kafka.clients.consumer.ConsumerRecord;
 //import org.springframework.kafka.annotation.KafkaListener;
@@ -13,4 +13,3 @@
 //    }
 //}
 //
-////

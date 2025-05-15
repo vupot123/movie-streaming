@@ -16,9 +16,11 @@
 	<description>Movie Service for Movie Streaming System</description>
 
 	<properties>
-		<spring-boot.version>2.4.5</spring-boot.version>
-		<spring-kafka.version>2.6.5</spring-kafka.version>
-		<kafka-clients.version>2.8.0</kafka-clients.version>
+		<java.version>11</java.version> <!-- Đảm bảo Java version rõ ràng -->
+		<spring-boot.version>3.2.5</spring-boot.version> <!-- Nâng cấp lên phiên bản mới -->
+		<spring-kafka.version>3.0.10</spring-kafka.version> <!-- Nâng cấp Spring Kafka -->
+		<kafka-clients.version>3.6.0</kafka-clients.version> <!-- Nâng cấp Kafka Clients -->
+		<jackson.version>2.15.2</jackson.version> <!-- Thêm Jackson version -->
 	</properties>
 
 	<dependencies>
@@ -38,6 +40,7 @@
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
 			<artifactId>spring-kafka</artifactId>
+			<version>${spring-kafka.version}</version>
 		</dependency>
 
 		<!-- Kafka Clients -->
@@ -45,6 +48,13 @@
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka-clients</artifactId>
 			<version>${kafka-clients.version}</version>
+		</dependency>
+
+		<!-- Jackson for JSON serialization -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
 		</dependency>
 
 		<!-- PostgreSQL -->
@@ -74,12 +84,17 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
-
+		<!-- SLF4J for logging -->
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>2.0.7</version>
+		</dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
-			<!-- Plugin giúp tạo Spring Boot fat jar chạy bằng `java -jar` -->
+			<!-- Spring Boot Maven Plugin -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -93,12 +108,14 @@
 				</executions>
 			</plugin>
 
-			<!-- Thêm plugin compiler để kích hoạt -parameters -->
+			<!-- Maven Compiler Plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
+				<version>3.11.0</version>
 				<configuration>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
 					<compilerArgument>-parameters</compilerArgument>
 				</configuration>
 			</plugin>

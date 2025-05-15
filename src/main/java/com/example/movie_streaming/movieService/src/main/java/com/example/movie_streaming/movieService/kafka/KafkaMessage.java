@@ -8,7 +8,6 @@ public class KafkaMessage {
     private Long entityId;
     private Map<String, Object> payload;
 
-    // Constructors
     public KafkaMessage() {
     }
 
@@ -19,7 +18,6 @@ public class KafkaMessage {
         this.payload = payload;
     }
 
-    // Getters and setters
     public String getEntityType() {
         return entityType;
     }
