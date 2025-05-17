@@ -12,15 +12,11 @@
 
 	<modules>
 		<module>src/main/java/com/example/movie_streaming/common</module>
-		<module>src/main/java/com/example/movie_streaming/demoService</module>
 		<module>src/main/java/com/example/movie_streaming/errorService</module>
-		<module>src/main/java/com/example/movie_streaming/metaService</module>
 		<module>src/main/java/com/example/movie_streaming/movieService</module>
-		<module>src/main/java/com/example/movie_streaming/actorService</module>
-		<module>src/main/java/com/example/movie_streaming/seriesService</module>
 		<module>src/main/java/com/example/movie_streaming/streamService</module>
 		<module>src/main/java/com/example/movie_streaming/userService</module>
-		<module>src/main/java/com/example/movie_streaming/uploadService</module>
+
 	</modules>
 
 	<properties>
