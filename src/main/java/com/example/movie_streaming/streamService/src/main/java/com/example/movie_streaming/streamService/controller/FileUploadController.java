@@ -1,6 +1,6 @@
 package com.example.movie_streaming.streamService.controller;
 
-import com.example.streamService.service.FileUploadService;
+import com.example.movie_streaming.streamService.service.FileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
