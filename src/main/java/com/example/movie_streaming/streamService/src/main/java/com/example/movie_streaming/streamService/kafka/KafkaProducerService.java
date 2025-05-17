@@ -21,10 +21,10 @@ public class KafkaProducerService {
         CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(topic, message);
         future.whenComplete((result, ex) -> {
             if (ex == null) {
-                logger.info(" Sent to Kafka topic {}: {} with offset: {}",
+                logger.info("Sent to Kafka topic {}: {} with offset: {}",
                         topic, message, result.getRecordMetadata().offset());
             } else {
-                logger.error(" Failed to send to Kafka topic {}: {}, error: {}",
+                logger.error("Failed to send to Kafka topic {}: {}, error: {}",
                         topic, message, ex.getMessage());
             }
         });
