@@ -1,15 +1,14 @@
 package com.example.movie_streaming.movieService.model.dto.response;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
-@Builder
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class MovieBannerResponse {
+public class MovieTrailerResponse {
     private Long id;
     private Long movieId;
-    private String smallBanner;
-    private String largeBanner;
+    private String url;
 }

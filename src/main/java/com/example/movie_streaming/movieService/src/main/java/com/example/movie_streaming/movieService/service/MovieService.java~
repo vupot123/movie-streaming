@@ -67,7 +67,10 @@ public class MovieService {
 
         Movie savedMovie = movieRepository.save(movie);
 
-        kafkaProducerService.sendMessage("movie-topic", "Create movie: " + savedMovie.getId());
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage(
+                "movie", "CREATE", savedMovie.getId(),
+                Map.of("title", savedMovie.getTitle())
+        ));
 
         return toResponse(savedMovie);
     }

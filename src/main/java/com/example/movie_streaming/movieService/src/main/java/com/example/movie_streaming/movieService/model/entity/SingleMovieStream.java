@@ -4,22 +4,24 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "movie_trailers")
+@Table(name = "single_movie_streams")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MovieTrailer {
+@Builder
+public class SingleMovieStream {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "movie_id", nullable = false)
+    @OneToOne
+    @JoinColumn(name = "movie_id", referencedColumnName = "id", unique = true)
     private Movie movie;
 
-    @Column(columnDefinition = "TEXT")
-    private String url;
-}
+    private String fileName;
 
+    @Column(columnDefinition = "TEXT")
+    private String fileUrl;
+}

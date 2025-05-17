@@ -1,6 +1,5 @@
 package com.example.movie_streaming.errorService;
 
-import com.example.movie_streaming.common.configuration.JwtProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
