@@ -32,7 +32,7 @@ public class KafkaConsumerService {
     public void listen(ConsumerRecord<String, String> record, Acknowledgment acknowledgment) {
         String messageJson = record.value();
         try {
-            logger.info("📥 Received from Kafka: {}", messageJson);
+            logger.info("Received from Kafka: {}", messageJson);
 
             // Parse JSON thành KafkaMessage
             KafkaMessage message = objectMapper.readValue(messageJson, KafkaMessage.class);
@@ -54,9 +54,9 @@ public class KafkaConsumerService {
             }
 
             // Acknowledge sau khi xử lý thành công
-            acknowledgment.acknowledge();  // Xác nhận
+            acknowledgment.acknowledge();
         } catch (Exception e) {
-            logger.error("❌ Error processing message: {}. Error: {}", messageJson, e.getMessage(), e);
+            logger.error(" Error processing message: {}. Error: {}", messageJson, e.getMessage(), e);
             // Gửi tin nhắn vào DLQ (Dead Letter Queue) nếu có lỗi
             kafkaTemplate.send(DLQ_TOPIC, messageJson);
         }
@@ -68,10 +68,8 @@ public class KafkaConsumerService {
         String fileUrl = (String) payload.get("fileUrl");
         String contentType = (String) payload.get("contentType");
 
-        // Kiểm tra trùng fileUrl
         String uniqueFileUrl = makeUniqueFileUrl(fileUrl);
 
-        // Tạo và lưu SingleMovieStream
         SingleMovieStream stream = new SingleMovieStream(movieId, fileName, uniqueFileUrl);
         singleMovieStreamRepository.save(stream);
         logger.info("Created SingleMovieStream from Kafka: {}", stream);

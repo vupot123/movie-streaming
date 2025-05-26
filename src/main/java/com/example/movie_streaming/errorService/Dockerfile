@@ -2,5 +2,6 @@ FROM eclipse-temurin:17-jdk
 LABEL authors="VU"
 WORKDIR /app
 COPY target/errorService-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8084
+EXPOSE 8080
+ENV PORT=8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

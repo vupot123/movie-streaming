@@ -36,7 +36,7 @@ public class KafkaConsumerService {
     public void listen(ConsumerRecord<String, String> record, Acknowledgment acknowledgment) {
         String messageJson = record.value();
         long startTime = System.currentTimeMillis();
-        log.info("📥 Received from Kafka topic movie-topic, partition={}, offset={}: {}",
+        log.info("Received from Kafka topic movie-topic, partition={}, offset={}: {}",
                 record.partition(), record.offset(), messageJson);
 
         try {
@@ -59,7 +59,7 @@ public class KafkaConsumerService {
             log.debug("Committed offset for partition={}, offset={}, took {} ms",
                     record.partition(), record.offset(), System.currentTimeMillis() - startTime);
         } catch (Exception e) {
-            log.error("❌ Error processing message: {}. Sending to DLQ: {}", messageJson, DLQ_TOPIC, e);
+            log.error("Error processing message: {}. Sending to DLQ: {}", messageJson, DLQ_TOPIC, e);
             kafkaTemplate.send(DLQ_TOPIC, messageJson);
             acknowledgment.acknowledge();
             log.debug("Committed offset after error for partition={}, offset={}, took {} ms",
@@ -102,7 +102,7 @@ public class KafkaConsumerService {
             log.info("Completed async action={} for movie, took {} ms",
                     action, System.currentTimeMillis() - startTime);
         } catch (Exception e) {
-            log.error("❌ Error processing async action={} for movie, entityId={}: {}",
+            log.error("Error processing async action={} for movie, entityId={}: {}",
                     action, entityId, e.getMessage(), e);
 
         }

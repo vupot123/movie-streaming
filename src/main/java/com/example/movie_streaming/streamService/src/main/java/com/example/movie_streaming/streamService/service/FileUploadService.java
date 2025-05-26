@@ -56,7 +56,6 @@ public class FileUploadService {
     }
 
     public void deleteFile(Long movieId) {
-        // Gửi Kafka message để xóa
         sendKafkaMessage("DELETE", movieId, null, null, null);
     }
 
