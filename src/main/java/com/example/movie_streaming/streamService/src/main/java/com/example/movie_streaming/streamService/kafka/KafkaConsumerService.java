@@ -13,28 +13,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.Optional;
+
 @Service
 public class KafkaConsumerService {
     private static final Logger logger = LoggerFactory.getLogger(KafkaConsumerService.class);
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final SingleMovieStreamRepository singleMovieStreamRepository;
     private final ObjectMapper objectMapper;
-    private static final String DLQ_TOPIC = "file-upload-topic-dlq";
+    private static final String DLQ_TOPIC = "file-uploaded-topic-dlq";
 
-    public KafkaConsumerService(KafkaTemplate<String, String> kafkaTemplate, SingleMovieStreamRepository singleMovieStreamRepository, ObjectMapper objectMapper) {
+    public KafkaConsumerService(KafkaTemplate<String, String> kafkaTemplate,
+                                SingleMovieStreamRepository singleMovieStreamRepository,
+                                ObjectMapper objectMapper) {
         this.kafkaTemplate = kafkaTemplate;
         this.singleMovieStreamRepository = singleMovieStreamRepository;
         this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = "file-upload-topic", groupId = "file-upload-group", containerFactory = "kafkaListenerContainerFactory")
+    @KafkaListener(topics = "file-uploaded-topic", groupId = "file-uploaded-group", containerFactory = "kafkaListenerContainerFactory")
     @Transactional
-    public void listen(ConsumerRecord<String, String> record, Acknowledgment acknowledgment) {
-        String messageJson = record.value();
+    public void listen(ConsumerRecord<String, String> consumerRecord, Acknowledgment acknowledgment) {
+        String messageJson = consumerRecord.value();
         try {
-            logger.info("Received from Kafka: {}", messageJson);
+            logger.info("Received message from Kafka: {}", messageJson);
 
-            // Parse JSON thành KafkaMessage
             KafkaMessage message = objectMapper.readValue(messageJson, KafkaMessage.class);
             Map<String, Object> payload = message.getPayload();
 
@@ -46,55 +49,65 @@ public class KafkaConsumerService {
                     case "DELETE":
                         handleDelete(payload);
                         break;
+                    case "GET":
+                    case "GET_ALL":
+                        logger.info("Processed {} action for payload: {}", message.getAction(), payload);
+                        break;
                     default:
-                        logger.warn("Unknown action: {}", message.getAction());
+                        logger.warn("Unsupported action: {}", message.getAction());
+                        break;
                 }
             } else {
-                logger.warn("Unknown entity type: {}", message.getEntityType());
+                logger.warn("Unsupported entity type: {}", message.getEntityType());
             }
 
-            // Acknowledge sau khi xử lý thành công
             acknowledgment.acknowledge();
         } catch (Exception e) {
-            logger.error(" Error processing message: {}. Error: {}", messageJson, e.getMessage(), e);
-            // Gửi tin nhắn vào DLQ (Dead Letter Queue) nếu có lỗi
+            logger.error("Error processing message: {}. Error: {}", messageJson, e.getMessage(), e);
             kafkaTemplate.send(DLQ_TOPIC, messageJson);
         }
     }
 
     private void handleUpload(Map<String, Object> payload) {
-        Long movieId = Long.valueOf(payload.get("movieId").toString());
-        String fileName = (String) payload.get("fileName");
-        String fileUrl = (String) payload.get("fileUrl");
-        String contentType = (String) payload.get("contentType");
+        try {
+            Long movieId = Long.valueOf(payload.get("movieId").toString());
+            String fileName = (String) payload.get("fileName");
+            String fileUrl = (String) payload.get("fileUrl");
+            String contentType = (String) payload.get("contentType");
 
-        String uniqueFileUrl = makeUniqueFileUrl(fileUrl);
+            logger.info("Processing UPLOAD for movieId: {}, fileName: {}", movieId, fileName);
 
-        SingleMovieStream stream = new SingleMovieStream(movieId, fileName, uniqueFileUrl);
-        singleMovieStreamRepository.save(stream);
-        logger.info("Created SingleMovieStream from Kafka: {}", stream);
+            if (singleMovieStreamRepository.findByFileName(fileName).isPresent()) {
+                logger.warn("FileName {} already exists in database.", fileName);
+                throw new IllegalArgumentException("File name already exists: " + fileName);
+            }
+
+            SingleMovieStream movieStream = new SingleMovieStream(movieId, fileName, fileUrl);
+            singleMovieStreamRepository.save(movieStream);
+            logger.info("Created SingleMovieStream from Kafka: {}", movieStream);
+        } catch (NumberFormatException e) {
+            logger.error("Invalid movieId format in payload: {}. Error: {}", payload, e.getMessage());
+            throw new IllegalArgumentException("Invalid movieId format", e);
+        }
     }
 
     private void handleDelete(Map<String, Object> payload) {
-        Long movieId = Long.valueOf(payload.get("movieId").toString());
-        singleMovieStreamRepository.deleteByMovieId(movieId);
-        logger.info("Deleted SingleMovieStream for movieId: {}", movieId);
-    }
+        try {
+            Long movieId = Long.valueOf(payload.get("movieId").toString());
+            String fileName = (String) payload.get("fileName");
 
-    private String makeUniqueFileUrl(String fileUrl) {
-        String uniqueFileUrl = fileUrl;
-        int suffix = 1;
+            logger.info("Processing DELETE for movieId: {}, fileName: {}", movieId, fileName);
 
-        // Kiểm tra trùng fileUrl trong database
-        while (singleMovieStreamRepository.existsByFileUrl(uniqueFileUrl)) {
-            String[] parts = fileUrl.split("\\.(?=[^.]+$)");
-            if (parts.length == 2) {
-                uniqueFileUrl = parts[0] + "_" + suffix + "." + parts[1];
+            Optional<SingleMovieStream> movieStream = singleMovieStreamRepository.findByMovieIdAndFileName(movieId, fileName);
+            if (movieStream.isPresent()) {
+                singleMovieStreamRepository.deleteByMovieIdAndFileName(movieId, fileName);
+                logger.info("Deleted SingleMovieStream for movieId: {} and fileName: {}", movieId, fileName);
             } else {
-                uniqueFileUrl = fileUrl + "_" + suffix;
+                logger.warn("No SingleMovieStream found for movieId: {} and fileName: {}", movieId, fileName);
             }
-            suffix++;
+        } catch (NumberFormatException e) {
+            logger.error("Invalid movieId format in payload: {}. Error: {}", payload, e.getMessage());
+            throw new IllegalArgumentException("Invalid movieId format", e);
         }
-        return uniqueFileUrl;
     }
 }
