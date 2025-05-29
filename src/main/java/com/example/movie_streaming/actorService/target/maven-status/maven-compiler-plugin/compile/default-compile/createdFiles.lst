@@ -1,4 +1,0 @@
-com\example\actorService\ActorServiceApplication.class
-com\example\actorService\kafka\KafkaConsumerService.class
-com\example\actorService\kafka\KafkaProducerService.class
-com\example\actorService\kafka\KafkaMessage.class

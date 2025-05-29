@@ -1,4 +1,0 @@
-com\example\errorService\ErrorServiceApplication.class
-com\example\errorService\kafka\KafkaMessage.class
-com\example\errorService\kafka\KafkaProducerService.class
-com\example\errorService\kafka\KafkaConsumerService.class

@@ -1,4 +1,0 @@
-com\example\seriesService\StreamServiceApplication.class
-com\example\streamService\kafka\KafkaConsumerService.class
-com\example\streamService\kafka\KafkaProducerService.class
-com\example\streamService\kafka\KafkaMessage.class
