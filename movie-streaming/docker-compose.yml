@@ -1,0 +1,76 @@
+#version: '3.8'
+
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    networks:
+      - kafka-net
+
+  kafka:
+    image: wurstmeister/kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka-net
+
+
+
+  movie-service:
+    build: src/main/java/com/example/movie_streaming/movieService
+    container_name: movie-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-net
+
+  user-service:
+    build: src/main/java/com/example/movie_streaming/userService
+    container_name: user-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-net
+
+
+
+  error-service:
+    build: src/main/java/com/example/movie_streaming/errorService
+    container_name: error-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-net
+
+  stream-service:
+    build: src/main/java/com/example/movie_streaming/streamService
+    container_name: stream-service
+    ports:
+      - "8087:8087"
+    depends_on:
+      - kafka
+    networks:
+      - kafka-net
+
+networks:
+  kafka-net:
+    driver: bridge

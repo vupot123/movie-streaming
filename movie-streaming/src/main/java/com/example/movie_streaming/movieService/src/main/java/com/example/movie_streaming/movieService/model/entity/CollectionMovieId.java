@@ -1,0 +1,29 @@
+package com.example.movie_streaming.movieService.model.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.io.Serializable;
+import java.util.Objects;
+
+@Embeddable
+@Getter
+@Setter
+class CollectionMovieId implements Serializable {
+    private Long collectionId;
+    private Long movieId;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof CollectionMovieId)) return false;
+        CollectionMovieId that = (CollectionMovieId) o;
+        return Objects.equals(movieId, that.movieId) &&
+                Objects.equals(collectionId, that.collectionId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(movieId, collectionId);
+    }
+}
