@@ -1,4 +1,4 @@
-package com.example.movie_streaming.errorService.kafka;
+package com.example.movie_streaming.userService.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerConfig;

@@ -3,25 +3,29 @@ package com.example.movie_streaming.userService.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "favorites")
-@Data
+@Getter
+@Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@IdClass(FavoriteId.class)
 public class Favorite {
+    @Id
+    @Column(name = "user_id")
+    private Long userId; // Thêm userId để khớp với FavoriteId
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private Long userId;
-
-    @Column(nullable = false)
+    @Column(name = "movie_id")
     private Long movieId;
 
-    @Column(nullable = false)
-    private String movieTitle;
-}
+    @ManyToOne
+    @JoinColumn(name = "user_id", insertable = false, updatable = false) // Liên kết với user_id
+    private User user;
 
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+}

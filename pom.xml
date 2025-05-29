@@ -16,13 +16,12 @@
 		<module>src/main/java/com/example/movie_streaming/movieService</module>
 		<module>src/main/java/com/example/movie_streaming/streamService</module>
 		<module>src/main/java/com/example/movie_streaming/userService</module>
-
 	</modules>
 
 	<properties>
 		<java.version>17</java.version>
-		<spring.boot.version>3.2.0</spring.boot.version>
-		<spring.cloud.version>2023.0.0</spring.cloud.version>
+		<spring.boot.version>3.3.5</spring.boot.version>
+		<spring.cloud.version>2023.0.1</spring.cloud.version>
 		<lombok.version>1.18.30</lombok.version>
 		<postgresql.version>42.6.0</postgresql.version>
 		<jjwt.version>0.11.5</jjwt.version>
@@ -41,6 +40,7 @@
 				<scope>import</scope>
 			</dependency>
 
+			<!-- Spring Cloud -->
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
@@ -90,6 +90,18 @@
 				<groupId>org.glassfish.jaxb</groupId>
 				<artifactId>jaxb-runtime</artifactId>
 				<version>${jakarta.xml.bind.version}</version>
+			</dependency>
+
+			<!-- Jackson Datatype JSR310 for LocalDate support -->
+			<dependency>
+				<groupId>com.fasterxml.jackson.datatype</groupId>
+				<artifactId>jackson-datatype-jsr310</artifactId>
+			</dependency>
+
+			<dependency>
+				<groupId>org.hibernate</groupId>
+				<artifactId>hibernate-core</artifactId>
+				<version>6.5.3.Final</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
