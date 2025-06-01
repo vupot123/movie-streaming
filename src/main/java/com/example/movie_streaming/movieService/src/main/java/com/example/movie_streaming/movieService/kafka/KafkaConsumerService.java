@@ -32,7 +32,7 @@ public class KafkaConsumerService {
     public void listen(ConsumerRecord<String, KafkaMessage> record, Acknowledgment acknowledgment) {
         KafkaMessage message = record.value();
         long startTime = System.currentTimeMillis();
-        log.info(" Received from Kafka topic movie-topic, partition={}, offset={}: {}",
+        log.info("📥 Received from Kafka topic movie-topic, partition={}, offset={}: {}",
                 record.partition(), record.offset(), message);
 
         try {
@@ -51,7 +51,7 @@ public class KafkaConsumerService {
             log.debug("Committed offset for partition={}, offset={}, took {} ms",
                     record.partition(), record.offset(), System.currentTimeMillis() - startTime);
         } catch (Exception e) {
-            log.error(" Error processing message: {}. Sending to DLQ: {}", message, DLQ_TOPIC, e);
+            log.error("❌ Error processing message: {}. Sending to DLQ: {}", message, DLQ_TOPIC, e);
             kafkaTemplate.send(DLQ_TOPIC, message);
             acknowledgment.acknowledge();
             log.debug("Committed offset after error for partition={}, offset={}, took {} ms",
@@ -124,9 +124,9 @@ public class KafkaConsumerService {
             log.info("Completed action={} for movie, took {} ms",
                     action, System.currentTimeMillis() - startTime);
         } catch (Exception e) {
-            log.error("Error processing action={} for movie, entityId={}: {}",
+            log.error("❌ Error processing action={} for movie, entityId={}: {}",
                     action, entityId, e.getMessage(), e);
-            throw e;
+            throw e; // Để transaction rollback
         }
     }
 }
