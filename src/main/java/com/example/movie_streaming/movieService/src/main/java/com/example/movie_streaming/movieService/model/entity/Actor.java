@@ -1,26 +1,39 @@
 package com.example.movie_streaming.movieService.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.ToString;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Entity
+@Table(name = "actors")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "actors")
 public class Actor {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
-    @Column(nullable = false)
     private String name;
 
-    @OneToMany(mappedBy = "actor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
+
+    private LocalDate dob;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
+    private String bio;
+
+    @OneToMany(mappedBy = "actor")
+    @ToString.Exclude
+    @JsonIgnore
     private List<MovieActor> movieActors;
+
 }

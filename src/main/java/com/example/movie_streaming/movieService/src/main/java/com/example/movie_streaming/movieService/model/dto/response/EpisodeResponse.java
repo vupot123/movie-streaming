@@ -4,16 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ActorResponse {
+public class EpisodeResponse {
     private Long id;
-    private String name;
-    private String gender;
-    private LocalDate dob;
-    private String avatarUrl;
-    private String bio;
+    private Long seasonId;
+    private Integer episodeNumber;
+    private String dubbedUrl;
+    private String subtitleUrl;
 }

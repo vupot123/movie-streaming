@@ -1,6 +1,6 @@
 package com.example.movie_streaming.movieService.model.entity;
 
-import jakarta.persistence.Embeddable;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.io.Serializable;
@@ -9,23 +9,21 @@ import java.util.Objects;
 @Embeddable
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class MovieGenreId implements Serializable {
+class CollectionMovieId implements Serializable {
+    private Long collectionId;
     private Long movieId;
-    private Integer genreId;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        MovieGenreId that = (MovieGenreId) o;
+        if (!(o instanceof CollectionMovieId)) return false;
+        CollectionMovieId that = (CollectionMovieId) o;
         return Objects.equals(movieId, that.movieId) &&
-                Objects.equals(genreId, that.genreId);
+                Objects.equals(collectionId, that.collectionId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(movieId, genreId);
+        return Objects.hash(movieId, collectionId);
     }
 }

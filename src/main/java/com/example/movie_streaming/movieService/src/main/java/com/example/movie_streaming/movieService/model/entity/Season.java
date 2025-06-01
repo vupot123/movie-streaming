@@ -1,16 +1,19 @@
 package com.example.movie_streaming.movieService.model.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.Set;
+
 @Entity
-@Table(name = "movie_banners")
+@Table(name = "seasons")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MovieBanner {
+public class Season {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,9 +23,13 @@ public class MovieBanner {
     @JsonBackReference
     private Movie movie;
 
-    @Column(name = "small_banner")
-    private String smallBanner;
+    @Column(name = "season_number")
+    private Integer seasonNumber;
 
-    @Column(name = "large_banner")
-    private String largeBanner;
+    private String name;
+
+    @OneToMany(mappedBy = "season")
+    @ToString.Exclude
+    @JsonIgnore
+    private Set<Episode> episodes;
 }

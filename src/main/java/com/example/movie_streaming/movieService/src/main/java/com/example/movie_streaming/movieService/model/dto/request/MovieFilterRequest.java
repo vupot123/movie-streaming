@@ -8,19 +8,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MovieFilterRequest {
-    private List<String> genres;          // tên thể loại
-    private List<String> countries;       // tên quốc gia
-    private List<Integer> years;          // danh sách năm phát hành
-    private String quality;               // chất lượng video (nếu có)
-    private String type;                  // "le" hoặc "bo"
-    private String status;                // trạng thái (nếu có dùng)
-    private String excludeStatus;         // loại trừ theo status
-    private List<String> versions;        // bản phụ đề, lồng tiếng...
-    private String rating;                // giới hạn độ tuổi (PG-13, R...)
-    private List<String> networks;        // đài sản xuất (nếu có dùng)
-    private List<String> productions;     // nhà sản xuất (nếu có dùng)
-    private String sort;                  // sắp xếp: "release_date", "views", "rating", ...
-    private Integer page = 0;             // trang hiện tại (bắt đầu từ 0)
-    private Integer size = 10;            // số phần tử/trang
-    private String keyword;               // tìm kiếm theo tiêu đề
+    private List<String> genres; // Tên thể loại
+    private List<String> countries; // Tên quốc gia
+    private List<Integer> years; // Danh sách năm phát hành
+    private String type; // "LE" hoặc "BO"
+    private List<String> versions; // Bản phụ đề, lồng tiếng (dubbed, subtitled)
+    private String rating; // Giới hạn độ tuổi (PG-13, R, v.v.)
+    private String sort; // Sắp xếp: "release_date", "views", "title"
+    private Integer page = 0; // Trang hiện tại (bắt đầu từ 0)
+    private Integer size = 10; // Số phần tử mỗi trang
+    private String keyword; // Từ khóa tìm kiếm theo tiêu đề
 }

@@ -5,24 +5,27 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "movie_banners")
+@Table(name = "episodes")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MovieBanner {
+public class Episode {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "movie_id")
+    @JoinColumn(name = "season_id")
     @JsonBackReference
-    private Movie movie;
+    private Season season;
 
-    @Column(name = "small_banner")
-    private String smallBanner;
+    @Column(name = "episode_number")
+    private Integer episodeNumber;
 
-    @Column(name = "large_banner")
-    private String largeBanner;
+    @Column(name = "dubbed_url")
+    private String dubbedUrl;
+
+    @Column(name = "subtitle_url")
+    private String subtitleUrl;
 }

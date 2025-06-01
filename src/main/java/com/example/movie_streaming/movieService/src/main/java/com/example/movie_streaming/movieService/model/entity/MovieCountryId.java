@@ -1,9 +1,10 @@
 package com.example.movie_streaming.movieService.model.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Embeddable;
 import lombok.*;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 @Embeddable
 @Getter
@@ -12,5 +13,19 @@ import java.io.Serializable;
 @AllArgsConstructor
 public class MovieCountryId implements Serializable {
     private Long movieId;
-    private Long countryId;
+    private Integer countryId;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MovieCountryId that = (MovieCountryId) o;
+        return Objects.equals(movieId, that.movieId) &&
+                Objects.equals(countryId, that.countryId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(movieId, countryId);
+    }
 }

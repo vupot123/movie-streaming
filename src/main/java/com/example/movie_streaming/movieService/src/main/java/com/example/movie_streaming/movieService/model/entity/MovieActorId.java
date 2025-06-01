@@ -11,14 +11,15 @@ import java.util.Objects;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MovieActorId implements Serializable {
+public class MovieActorId implements Serializable { // Thêm từ khóa public
     private Long movieId;
-    private Integer actorId;
+    private Long actorId;
 
+    // Đảm bảo triển khai equals() và hashCode() cho khóa chính composite
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof MovieActorId)) return false;
+        if (o == null || getClass() != o.getClass()) return false;
         MovieActorId that = (MovieActorId) o;
         return Objects.equals(movieId, that.movieId) &&
                 Objects.equals(actorId, that.actorId);

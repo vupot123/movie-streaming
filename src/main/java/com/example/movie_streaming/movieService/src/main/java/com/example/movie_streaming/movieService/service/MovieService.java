@@ -6,20 +6,25 @@ import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.request.MovieFilterRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
-import com.example.movie_streaming.movieService.model.dto.response.*;
+import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.movieService.model.entity.*;
 import com.example.movie_streaming.movieService.repository.*;
 import com.example.movie_streaming.movieService.specification.MovieSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Calendar;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MovieService {
@@ -29,136 +34,310 @@ public class MovieService {
     private final MovieBannerRepository bannerRepository;
     private final KafkaProducerService kafkaProducerService;
     private final MovieActorRepository movieActorRepository;
-    private final SingleMovieStreamRepository singleMovieStreamRepository;
+    private final MovieGenreRepository movieGenreRepository;
+    private final MovieCountryRepository movieCountryRepository;
+    private final SeasonRepository seasonRepository;
+    private final MovieMapper movieMapper;
 
     public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
-        Pageable pageable = PageRequest.of(
-                request.getPage() != null ? request.getPage() - 1 : 0,
-                request.getSize() != null ? request.getSize() : 20
-        );
-
-        Page<Movie> movies = movieRepository.findAll(new MovieSpecification(request), pageable);
-        return movies.map(this::toResponse);
+        int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() - 1 : 0;
+        int size = request.getSize() != null && request.getSize() > 0 ? request.getSize() : 20;
+        Pageable pageable = PageRequest.of(page, size);
+        return movieRepository.findAll(new MovieSpecification(request), pageable).map(movieMapper::toResponse);
     }
 
-    public MovieResponse getMovieById(Long id) {
-        Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
-        return toResponse(movie);
-    }
-
+    @Transactional(readOnly = true)
     public List<MovieResponse> getAllMovies() {
-        return movieRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        List<Movie> movies = movieRepository.findAll();
+        movies.forEach(this::initializeMovie);
+        return movies.stream().map(movieMapper::toResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public MovieResponse getMovieById(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID phim không hợp lệ");
+        }
+        Movie movie = movieRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim với ID: " + id));
+        initializeMovie(movie);
+        movie.setStreamUrl(null);
+        return movieMapper.toResponse(movie);
+    }
+
+    @Transactional
     public MovieResponse createMovie(CreateMovieRequest request) {
+        validateCreateRequest(request);
+
+        String normalizedTitle = request.getTitle().trim().toLowerCase();
+        boolean exists = movieRepository.existsByTitleIgnoreCase(normalizedTitle);
+        if (exists) {
+            throw new IllegalArgumentException(String.format("Phim với tiêu đề '%s' đã tồn tại", request.getTitle()));
+        }
+
+        log.info("Tạo phim mới với tiêu đề: {}", request.getTitle());
+
         Movie movie = Movie.builder()
-                .title(request.getTitle())
+                .title(request.getTitle().trim())
                 .type(MovieType.fromString(request.getType()))
                 .year(request.getYear())
                 .duration(request.getDuration())
-                .intro(request.getIntro())
+                .intro(request.getIntro() != null ? request.getIntro().trim() : null)
                 .ageRating(request.getAgeRating())
-                .views(request.getViews())
+                .views(request.getViews() != null && request.getViews() >= 0 ? request.getViews() : 0L)
                 .build();
 
         Movie savedMovie = movieRepository.save(movie);
+        saveMovieRelations(savedMovie, request.getActorIds(), request.getGenreIds(), request.getCountryIds(),
+                request.getTrailerUrls(), request.getSmallBanner(), request.getLargeBanner());
 
-        kafkaProducerService.sendMessage("movie-topic", "Create movie: " + savedMovie.getId());
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "CREATE", savedMovie.getId(),
+                KafkaPayloadBuilder.buildCreatePayload(request)));
+        log.info("Đã gửi Kafka message cho phim mới với ID: {}", savedMovie.getId());
 
-        return toResponse(savedMovie);
+        return movieMapper.toResponse(savedMovie);
     }
 
+    @Transactional
     public MovieResponse updateMovie(Long id, UpdateMovieRequest request) {
-        Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Movie not found"));
-
-        movie.setTitle(request.getTitle());
-        movie.setType(MovieType.fromString(request.getType()));
-        movie.setYear(request.getYear());
-        movie.setDuration(request.getDuration());
-        movie.setIntro(request.getIntro());
-        movie.setAgeRating(request.getAgeRating());
-        movie.setViews(request.getViews());
-
-        Movie updated = movieRepository.save(movie);
-
-        kafkaProducerService.sendMessage("movie-topic", "Update movie: " + id);
-
-        return toResponse(updated);
-    }
-
-    public void deleteMovie(Long id) {
-        if (!movieRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Movie not found");
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID phim không hợp lệ");
         }
 
+        Movie movie = movieRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim với ID: " + id));
+
+        log.info("Cập nhật phim với ID: {}", id);
+
+        if (request.getTitle() != null && !request.getTitle().trim().equalsIgnoreCase(movie.getTitle())) {
+            String normalizedTitle = request.getTitle().trim().toLowerCase();
+            boolean exists = movieRepository.existsByTitleIgnoreCaseAndIdNot(normalizedTitle, id);
+            if (exists) {
+                throw new IllegalArgumentException(String.format("Phim với tiêu đề '%s' đã tồn tại", request.getTitle()));
+            }
+        }
+
+        boolean updated = updateMovieFields(movie, request);
+        boolean relationsUpdated = request.getActorIds() != null || request.getGenreIds() != null ||
+                request.getCountryIds() != null || request.getTrailerUrls() != null ||
+                request.getSmallBanner() != null || request.getLargeBanner() != null;
+
+        if (relationsUpdated) {
+            deleteMovieRelations(id);
+            saveMovieRelations(movie, request.getActorIds(), request.getGenreIds(), request.getCountryIds(),
+                    request.getTrailerUrls(), request.getSmallBanner(), request.getLargeBanner());
+            updated = true;
+        }
+
+        if (!updated) {
+            log.info("Không có thay đổi nào được thực hiện cho phim với ID: {}", id);
+            return movieMapper.toResponse(movie);
+        }
+
+        Movie updatedMovie = movieRepository.save(movie);
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "UPDATE", id,
+                KafkaPayloadBuilder.buildUpdatePayload(updatedMovie, request)));
+        log.info("Đã gửi Kafka message cho phim cập nhật với ID: {}", id);
+
+        return movieMapper.toResponse(updatedMovie);
+    }
+
+    @Transactional
+    public void deleteMovie(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID phim không hợp lệ");
+        }
+
+        if (!movieRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Không tìm thấy phim với ID: " + id);
+        }
+
+        log.info("Xóa phim với ID: {}", id);
+
+        deleteMovieRelations(id);
         movieRepository.deleteById(id);
 
-        kafkaProducerService.sendMessage("movie-topic", "Delete movie: " + id);
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "DELETE", id, null));
+        log.info("Đã gửi Kafka message cho phim xóa với ID: {}", id);
     }
 
+    @Transactional
     public void addView(Long id) {
-        Movie movie = movieRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with ID: " + id));
-        movie.setViews(movie.getViews() + 1);
-        movieRepository.save(movie);
-
-        kafkaProducerService.sendMessage("movie-topic", "Add view movie: " + id);
-    }
-
-    public List<MovieResponse> searchMovies(String keyword) {
-        List<Movie> movies = movieRepository.searchByTitleOrActorName(keyword);
-        if (movies.isEmpty()) {
-            throw new ResourceNotFoundException("No movies found with keyword: " + keyword);
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException("ID phim không hợp lệ");
         }
 
-        return movies.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        Movie movie = movieRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim với ID: " + id));
+
+        log.info("Tăng lượt xem cho phim với ID: {}", id);
+
+        movie.setViews(movie.getViews() != null ? movie.getViews() + 1 : 1L);
+        movieRepository.save(movie);
+
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "VIEW", id,
+                KafkaPayloadBuilder.buildViewPayload(id, movie.getViews())));
+        log.info("Đã gửi Kafka message cho lượt xem phim với ID: {}", id);
     }
 
-    public MovieResponse toResponse(Movie movie) {
-        List<MovieTrailer> trailers = trailerRepository.findByMovieId(movie.getId());
-        List<MovieBanner> banners = bannerRepository.findByMovieId(movie.getId());
-        List<MovieActor> actors = movieActorRepository.findByMovieId(movie.getId());
+    @Transactional(readOnly = true)
+    public List<MovieResponse> searchMovies(String keyword) {
+        if (keyword == null || keyword.trim().isBlank()) {
+            throw new IllegalArgumentException("Từ khóa tìm kiếm không được để trống");
+        }
 
-        List<ActorResponse> actorResponses = actors.stream()
-                .map(a -> new ActorResponse(a.getActor().getId(), a.getActor().getName()))
-                .collect(Collectors.toList());
+        List<Movie> movies = movieRepository.searchByTitleOrActorName(keyword.trim());
+        if (movies.isEmpty()) {
+            throw new ResourceNotFoundException("Không tìm thấy phim với từ khóa: " + keyword);
+        }
 
-        SingleMovieStreamResponse streamResponse = singleMovieStreamRepository.findByMovieId(movie.getId())
-                .map(stream -> new SingleMovieStreamResponse(
-                        stream.getId(),
-                        stream.getFileName(),
-                        stream.getFileUrl()
-                )).orElse(null);
+        movies.forEach(this::initializeMovie);
 
-        return MovieResponse.builder()
-                .id(movie.getId())
-                .title(movie.getTitle())
-                .type(movie.getType().toString())
-                .year(movie.getYear())
-                .duration(movie.getDuration())
-                .intro(movie.getIntro())
-                .ageRating(movie.getAgeRating())
-                .views(movie.getViews())
-                .trailers(trailers.stream().map(trailer -> new MovieTrailerResponse(
-                        trailer.getId(),
-                        trailer.getMovie().getId(),
-                        trailer.getUrl()
-                )).collect(Collectors.toList()))
-                .banners(banners.stream().map(banner -> new MovieBannerResponse(
-                        banner.getId(),
-                        banner.getMovie().getId(),
-                        banner.getSmallBanner(),
-                        banner.getLargeBanner()
-                )).collect(Collectors.toList()))
-                .actors(actorResponses)
-                .stream(streamResponse) // phải có .stream(SingleMovieStreamResponse)
-                .build();
+        return movies.stream().map(movieMapper::toResponse).collect(Collectors.toList());
     }
+
+    private void initializeMovie(Movie movie) {
+        Hibernate.initialize(movie.getSeasons());
+        movie.getSeasons().forEach(season -> Hibernate.initialize(season.getEpisodes()));
+        Hibernate.initialize(movie.getTrailers());
+        Hibernate.initialize(movie.getBanners());
+        Hibernate.initialize(movie.getMovieActors());
+        movie.getMovieActors().forEach(ma -> Hibernate.initialize(ma.getActor()));
+        Hibernate.initialize(movie.getMovieGenres());
+        movie.getMovieGenres().forEach(mg -> Hibernate.initialize(mg.getGenre()));
+        Hibernate.initialize(movie.getMovieCountries());
+        movie.getMovieCountries().forEach(mc -> Hibernate.initialize(mc.getCountry()));
+    }
+
+    private boolean updateMovieFields(Movie movie, UpdateMovieRequest request) {
+        boolean updated = false;
+
+        if (request.getTitle() != null && !Objects.equals(request.getTitle().trim(), movie.getTitle())) {
+            movie.setTitle(request.getTitle().trim());
+            updated = true;
+        }
+        if (request.getType() != null && !Objects.equals(MovieType.fromString(request.getType()), movie.getType())) {
+            movie.setType(MovieType.fromString(request.getType()));
+            updated = true;
+        }
+        if (request.getYear() != null && !Objects.equals(request.getYear(), movie.getYear())) {
+            movie.setYear(request.getYear());
+            updated = true;
+        }
+        if (request.getDuration() != null && !Objects.equals(request.getDuration(), movie.getDuration())) {
+            movie.setDuration(request.getDuration());
+            updated = true;
+        }
+        if (request.getIntro() != null && !Objects.equals(request.getIntro().trim(), movie.getIntro())) {
+            movie.setIntro(request.getIntro().trim());
+            updated = true;
+        }
+        if (request.getAgeRating() != null && !Objects.equals(request.getAgeRating(), movie.getAgeRating())) {
+            movie.setAgeRating(request.getAgeRating());
+            updated = true;
+        }
+        if (request.getViews() != null && !Objects.equals(request.getViews(), movie.getViews())) {
+            movie.setViews(request.getViews());
+            updated = true;
+        }
+
+        return updated;
+    }
+
+    private void saveMovieRelations(Movie movie, List<Long> actorIds, List<Integer> genreIds, List<Integer> countryIds,
+                                    List<String> trailerUrls, String smallBanner, String largeBanner) {
+        if (actorIds != null && !actorIds.isEmpty()) {
+            List<MovieActor> movieActors = actorIds.stream()
+                    .filter(id -> id != null && id > 0)
+                    .distinct()
+                    .map(actorId -> {
+                        Actor actor = new Actor();
+                        actor.setId(actorId);
+                        return new MovieActor(new MovieActorId(movie.getId(), actorId), movie, actor);
+                    })
+                    .toList();
+            movieActorRepository.saveAll(movieActors);
+        }
+
+        if (genreIds != null && !genreIds.isEmpty()) {
+            List<MovieGenre> movieGenres = genreIds.stream()
+                    .filter(id -> id != null && id > 0)
+                    .distinct()
+                    .map(genreId -> {
+                        Genre genre = new Genre();
+                        genre.setId(genreId);
+                        return new MovieGenre(new MovieGenreId(movie.getId(), genreId), movie, genre);
+                    })
+                    .toList();
+            movieGenreRepository.saveAll(movieGenres);
+        }
+
+        if (countryIds != null && !countryIds.isEmpty()) {
+            List<MovieCountry> movieCountries = countryIds.stream()
+                    .filter(id -> id != null && id > 0)
+                    .distinct()
+                    .map(countryId -> {
+                        Country country = new Country();
+                        country.setId(countryId);
+                        return new MovieCountry(new MovieCountryId(movie.getId(), countryId), movie, country);
+                    })
+                    .toList();
+            movieCountryRepository.saveAll(movieCountries);
+        }
+
+        if (trailerUrls != null && !trailerUrls.isEmpty()) {
+            List<MovieTrailer> trailers = trailerUrls.stream()
+                    .filter(url -> url != null && !url.trim().isBlank())
+                    .distinct()
+                    .map(url -> new MovieTrailer(null, movie, url.trim()))
+                    .toList();
+            trailerRepository.saveAll(trailers);
+        }
+
+        if ((smallBanner != null && !smallBanner.trim().isBlank()) ||
+                (largeBanner != null && !largeBanner.trim().isBlank())) {
+            MovieBanner banner = new MovieBanner(null, movie,
+                    smallBanner != null ? smallBanner.trim() : "",
+                    largeBanner != null ? largeBanner.trim() : "");
+            bannerRepository.save(banner);
+        }
+    }
+
+    private void deleteMovieRelations(Long movieId) {
+        movieActorRepository.deleteByMovieId(movieId);
+        movieGenreRepository.deleteByMovieId(movieId);
+        movieCountryRepository.deleteByMovieId(movieId);
+        trailerRepository.deleteByMovieId(movieId);
+        bannerRepository.deleteByMovieId(movieId);
+        seasonRepository.deleteByMovieId(movieId);
+    }
+    private void validateCreateRequest(CreateMovieRequest request) {
+        if (request.getTitle() == null || request.getTitle().trim().isBlank()) {
+            throw new IllegalArgumentException("Tiêu đề phim không được để trống");
+        }
+        if (request.getType() == null || request.getType().trim().isBlank()) {
+            throw new IllegalArgumentException("Loại phim không được để trống");
+        }
+        if (request.getYear() != null) {
+            int currentYear = Calendar.getInstance().get(Calendar.YEAR);
+            if (request.getYear() < 1888 || request.getYear() > currentYear + 1) {
+                throw new IllegalArgumentException("Năm phát hành không hợp lệ");
+            }
+        }
+        if (request.getDuration() != null && request.getDuration() <= 0) {
+            throw new IllegalArgumentException("Thời lượng phim phải lớn hơn 0");
+        }
+        if (request.getViews() != null && request.getViews() < 0) {
+            throw new IllegalArgumentException("Lượt xem không được âm");
+        }
+        if (request.getTrailerUrls() != null) {
+            for (String url : request.getTrailerUrls()) {
+                if (url != null && !url.matches("^(https?|ftp)://[^\\s/$.?#].\\S*$")) {
+                    throw new IllegalArgumentException("URL trailer không hợp lệ: " + url);
+                }
+            }
+        }
+    }
+
 }

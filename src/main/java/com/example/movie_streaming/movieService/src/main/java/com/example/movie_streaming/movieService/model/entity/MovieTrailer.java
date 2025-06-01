@@ -1,5 +1,6 @@
 package com.example.movie_streaming.movieService.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,16 +11,14 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class MovieTrailer {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "movie_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "movie_id")
+    @JsonBackReference
     private Movie movie;
 
-    @Column(columnDefinition = "TEXT")
     private String url;
 }
-

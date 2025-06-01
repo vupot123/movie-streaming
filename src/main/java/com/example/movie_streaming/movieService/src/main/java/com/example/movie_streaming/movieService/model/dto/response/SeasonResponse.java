@@ -4,16 +4,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ActorResponse {
+public class SeasonResponse {
     private Long id;
+    private Long movieId;
+    private Integer seasonNumber;
     private String name;
-    private String gender;
-    private LocalDate dob;
-    private String avatarUrl;
-    private String bio;
+    private Set<EpisodeResponse> episodes; // Đổi từ List sang Set
 }
