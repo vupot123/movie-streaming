@@ -31,7 +31,7 @@ public class KafkaConfig {
     @Bean
     public ProducerFactory<String, KafkaMessage> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "host.docker.internal:9092");
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "34.126.175.67:9093");
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         configProps.put(ProducerConfig.ACKS_CONFIG, "all");
@@ -50,7 +50,7 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, KafkaMessage> consumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "host.docker.internal:9092");
+        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "34.126.175.67:9093");
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, "movie-group");
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);

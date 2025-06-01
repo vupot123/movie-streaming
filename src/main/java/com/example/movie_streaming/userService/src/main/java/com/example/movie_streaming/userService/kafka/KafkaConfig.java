@@ -1,4 +1,4 @@
-package com.example.movie_streaming.userService.kafka;
+package com.example.movie_streaming.errorService.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
-import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -61,8 +60,9 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         factory.setConcurrency(3);
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
-        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 3L)));
+        factory.setCommonErrorHandler(new DefaultErrorHandler(
+                new FixedBackOff(1000L, 3L)
+        ));
         return factory;
     }
 }
