@@ -43,7 +43,6 @@ public class UserService {
     private final MovieClient movieClient;
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
-    private final WebC
 
     public void register(@Valid RegisterRequest request) {
         logger.debug("Đang đăng ký người dùng: {}", request.getUsername());

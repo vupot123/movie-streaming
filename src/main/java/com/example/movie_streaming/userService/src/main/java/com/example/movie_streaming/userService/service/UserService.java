@@ -112,7 +112,7 @@ public class UserService {
         // Truyền cả username và role vào generateToken
         String token = jwtProvider.generateToken(user.getUsername(), role);
         logger.info("Đăng nhập thành công cho người dùng: {}, vai trò: {}", user.getUsername(), role);
-        return new JwtResponse(role, token);
+        return new JwtResponse(role, user.getUsername(), token);
     }
 
     public void addFavorite(String username, @Valid FavoriteRequest request) {
