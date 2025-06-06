@@ -4,6 +4,7 @@ import com.example.movie_streaming.common.security.JwtAuthenticationFilter;
 import com.example.movie_streaming.common.security.JwtProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -27,12 +28,16 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/actuator/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
+                        // Endpoints chỉ ADMIN được phép truy cập
+                        .requestMatchers(HttpMethod.POST, "/api/movies").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/movies/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/movies/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/movies/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/upload/file").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/upload/file").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/upload/files").hasRole("ADMIN")
+                        // Từ chối tất cả các yêu cầu khác không khớp
+                        .anyRequest().denyAll()
                 )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
