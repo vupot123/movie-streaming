@@ -1,0 +1,9 @@
+package com.example.movie_streaming.movieService.repository;
+
+import com.example.movie_streaming.movieService.model.entity.CollectionMovie;
+import com.example.movie_streaming.movieService.model.entity.CollectionMovieId;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CollectionMovieRepository extends JpaRepository<CollectionMovie, CollectionMovieId> {
+    void deleteByCollectionId(Long collectionId);
+}

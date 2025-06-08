@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -15,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.*;
 
+@Slf4j
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -37,7 +39,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        // Bỏ qua kiểm tra token cho các endpoint công khai
         if (EXCLUDED_PATHS.contains(path) || isPublicEndpoint(request)) {
             filterChain.doFilter(request, response);
             return;
@@ -45,16 +46,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        // Kiểm tra header Authorization
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            sendErrorResponse(response, 403, "Missing or invalid Authorization header");
+            sendErrorResponse(response, 401, "Thiếu hoặc sai định dạng Authorization header");
             return;
         }
 
+        String token = authHeader.substring(7);
         try {
-            String token = authHeader.substring(7);
             if (!jwtProvider.validateToken(token)) {
-                sendErrorResponse(response, 403, "Invalid or expired JWT token");
+                sendErrorResponse(response, 401, "JWT token không hợp lệ hoặc đã hết hạn");
                 return;
             }
 
@@ -70,23 +70,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             filterChain.doFilter(request, response);
+
         } catch (Exception e) {
-            sendErrorResponse(response, 403, "Invalid or expired JWT token: " + e.getMessage());
+            SecurityContextHolder.clearContext();
+            log.error("JWT Filter Error: {}", e.getMessage());
+            sendErrorResponse(response, 401, "Lỗi xác thực JWT: " + e.getMessage());
         }
     }
 
-    // ✅ Cho phép public các endpoint GET và filter/search POST
     private boolean isPublicEndpoint(HttpServletRequest request) {
         String path = request.getServletPath();
         String method = request.getMethod();
 
-        return ("GET".equals(method) && (
-                path.matches("/api/movies(/\\d+)?") || // /api/movies, /api/movies/{id}
-                        path.startsWith("/api/movies/search")
-        )) || ("POST".equals(method) && path.equals("/api/movies/filter"));
+        return ("GET".equalsIgnoreCase(method) && (
+                path.matches("/api/movies(/\\d+)?") || path.startsWith("/api/movies/search")
+        )) || ("POST".equalsIgnoreCase(method) && path.equals("/api/movies/filter"));
     }
 
-    // ✅ Tránh Map.of với giá trị null
     private void sendErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

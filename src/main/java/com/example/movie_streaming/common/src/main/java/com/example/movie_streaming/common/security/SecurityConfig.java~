@@ -1,4 +1,5 @@
 package com.example.movie_streaming.common.security;
+import com.example.movie_streaming.common.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;

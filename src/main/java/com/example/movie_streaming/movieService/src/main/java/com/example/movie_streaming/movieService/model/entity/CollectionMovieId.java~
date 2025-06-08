@@ -9,8 +9,6 @@ import java.util.Objects;
 @Embeddable
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
 public class CollectionMovieId implements Serializable {
     private Long collectionId;
     private Long movieId;

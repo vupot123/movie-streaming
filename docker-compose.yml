@@ -1,4 +1,4 @@
-#version: '3.8'
+version: '3.8'
 
 services:
   zookeeper:
@@ -27,7 +27,13 @@ services:
     networks:
       - kafka-net
 
-
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - kafka-net
 
   movie-service:
     build: src/main/java/com/example/movie_streaming/movieService
@@ -36,6 +42,7 @@ services:
       - "8082:8082"
     depends_on:
       - kafka
+      - redis
     networks:
       - kafka-net
 
@@ -46,10 +53,9 @@ services:
       - "8083:8083"
     depends_on:
       - kafka
+      - redis
     networks:
       - kafka-net
-
-
 
   error-service:
     build: src/main/java/com/example/movie_streaming/errorService

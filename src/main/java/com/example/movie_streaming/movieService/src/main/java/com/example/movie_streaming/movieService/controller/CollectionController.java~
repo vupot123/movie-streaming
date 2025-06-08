@@ -1,0 +1,69 @@
+package com.example.movie_streaming.movieService.controller;
+
+import com.example.movie_streaming.common.response.ApiResponse;
+import com.example.movie_streaming.movieService.model.dto.request.CreateCollectionRequest;
+import com.example.movie_streaming.movieService.model.dto.request.UpdateCollectionRequest;
+import com.example.movie_streaming.movieService.model.dto.response.CollectionResponse;
+import com.example.movie_streaming.movieService.service.CollectionService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/collections")
+@RequiredArgsConstructor
+public class CollectionController {
+
+    private final CollectionService collectionService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<CollectionResponse>>> getAllCollections() {
+        List<CollectionResponse> collections = collectionService.getAllCollections();
+        return ResponseEntity.ok(ApiResponse.success(200, "Lấy tất cả bộ sưu tập thành công", collections));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<CollectionResponse>> createCollection(
+            @RequestBody CreateCollectionRequest request) {
+        CollectionResponse response = collectionService.createCollection(request);
+        return ResponseEntity.ok(ApiResponse.success(200, "Tạo bộ sưu tập thành công", response));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<CollectionResponse>> updateCollection(
+            @PathVariable("id") Long id,
+            @RequestBody UpdateCollectionRequest request) {
+        CollectionResponse response = collectionService.updateCollection(id, request);
+        return ResponseEntity.ok(ApiResponse.success(200, "Cập nhật bộ sưu tập thành công", response));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteCollection(@PathVariable("id") Long id) {
+        collectionService.deleteCollection(id);
+        return ResponseEntity.ok(ApiResponse.success(200, "Xóa bộ sưu tập thành công", null));
+    }
+
+    @PostMapping("/{collectionId}/movies/{movieId}")
+    public ResponseEntity<ApiResponse<Void>> addMovieToCollection(
+            @PathVariable("collectionId") Long collectionId,
+            @PathVariable("movieId") Long movieId) {
+        collectionService.addMovieToCollection(collectionId, movieId);
+        return ResponseEntity.ok(ApiResponse.success(200, "Đã thêm phim vào bộ sưu tập", null));
+    }
+
+    @DeleteMapping("/{collectionId}/movies/{movieId}")
+    public ResponseEntity<ApiResponse<Void>> removeMovieFromCollection(
+            @PathVariable("collectionId") Long collectionId,
+            @PathVariable("movieId") Long movieId) {
+        collectionService.removeMovieFromCollection(collectionId, movieId);
+        return ResponseEntity.ok(ApiResponse.success(200, "Đã xóa phim khỏi bộ sưu tập", null));
+    }
+
+    @GetMapping("/featured")
+    public ResponseEntity<ApiResponse<List<CollectionResponse>>> getFeaturedCollections() {
+        List<CollectionResponse> collections = collectionService.getFeaturedCollections();
+        return ResponseEntity.ok(ApiResponse.success(200, "Lấy danh sách bộ sưu tập nổi bật thành công", collections));
+    }
+}

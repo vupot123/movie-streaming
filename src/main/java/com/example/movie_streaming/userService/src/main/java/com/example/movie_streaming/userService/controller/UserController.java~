@@ -141,6 +141,7 @@ public class UserController {
         }
 
         userService.logout(token);
+
         return ResponseEntity.ok(new ApiResponse<>(200, "Đăng xuất thành công", null));
     }
 

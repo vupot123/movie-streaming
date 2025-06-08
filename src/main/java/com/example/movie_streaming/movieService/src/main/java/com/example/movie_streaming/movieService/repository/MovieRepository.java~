@@ -46,11 +46,8 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
             "movieGenres.genre",
             "movieCountries.country",
             "trailers",
-            "banners",
-            "seasons",
-            "seasons.episodes"
+            "banners"
     })
     List<Movie> findAllByIdIn(Set<Long> ids);
-
 
 }

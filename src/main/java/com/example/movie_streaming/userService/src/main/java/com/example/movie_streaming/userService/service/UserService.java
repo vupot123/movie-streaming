@@ -23,11 +23,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,6 +45,7 @@ public class UserService {
     private final MovieClient movieClient;
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
+    private final RedisTemplate<String, String> redisTemplate;
 
     public void register(@Valid RegisterRequest request) {
         logger.debug("Đang đăng ký người dùng: {}", request.getUsername());
@@ -219,5 +222,20 @@ public class UserService {
         } catch (Exception e) {
             logger.error("Lỗi khi gửi tin nhắn Kafka cho sự kiện xem phim: user={}, movieId={}", username, movieId, e);
         }
+    }
+
+    public void logout(String token) {
+        if (!jwtProvider.validateToken(token)) {
+            throw new InvalidCredentialsException("Token không hợp lệ");
+        }
+
+        long expiryMillis = jwtProvider.getExpirationFromToken(token);
+        long ttlSeconds = (expiryMillis - System.currentTimeMillis()) / 1000;
+
+        redisTemplate.opsForValue().set("blacklist:" + token, "true", ttlSeconds, TimeUnit.SECONDS);
+    }
+
+    public boolean isTokenBlacklisted(String token) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token));
     }
 }
