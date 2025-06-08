@@ -7,7 +7,6 @@ import com.example.movie_streaming.movieService.model.dto.request.CreateMovieReq
 import com.example.movie_streaming.movieService.model.dto.request.MovieFilterRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
-import com.example.movie_streaming.movieService.model.dto.response.StreamFile;
 import com.example.movie_streaming.movieService.model.entity.*;
 import com.example.movie_streaming.movieService.repository.*;
 import com.example.movie_streaming.movieService.specification.MovieSpecification;
@@ -74,21 +73,16 @@ public class MovieService {
 
     private String getStreamUrlFromService(Long movieId) {
         try {
-            StreamFile[] files = streamWebClient.get()
+            return streamWebClient.get()
                     .uri("/upload/movie/{movieId}", movieId)
                     .retrieve()
-                    .bodyToMono(StreamFile[].class)
-                    .block();
-
-            if (files != null && files.length > 0) {
-                return files[0].getFileUrl(); // lấy file đầu tiên
-            }
+                    .bodyToMono(String.class)
+                    .block(); // Blocking vì service là sync
         } catch (Exception e) {
             log.warn("Không thể lấy streamUrl cho movieId {}: {}", movieId, e.getMessage());
+            return null;
         }
-        return null;
     }
-
 
 
     @Transactional

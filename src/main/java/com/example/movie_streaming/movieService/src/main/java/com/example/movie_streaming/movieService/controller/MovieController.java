@@ -1,5 +1,6 @@
 package com.example.movie_streaming.movieService.controller;
 
+import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
 import com.example.movie_streaming.common.response.ApiResponse;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.request.MovieFilterRequest;

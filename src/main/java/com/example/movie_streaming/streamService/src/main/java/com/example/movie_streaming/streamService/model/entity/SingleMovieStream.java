@@ -13,19 +13,16 @@ public class SingleMovieStream {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    private Long movieId;
     private String fileName;
     private String fileUrl;
 
-    public SingleMovieStream(Long movieId, String fileName, String fileUrl) {
-        this.movieId = movieId;
-        this.fileName = fileName;
-        this.fileUrl = fileUrl;
+    public SingleMovieStream() {
     }
 
-    public SingleMovieStream() {
-
+    public SingleMovieStream(Long id, String fileName, String fileUrl) {
+        this.id = id;
+        this.fileName = fileName;
+        this.fileUrl = fileUrl;
     }
 
     public Long getId() {
@@ -34,14 +31,6 @@ public class SingleMovieStream {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getMovieId() {
-        return movieId;
-    }
-
-    public void setMovieId(Long movieId) {
-        this.movieId = movieId;
     }
 
     public String getFileName() {

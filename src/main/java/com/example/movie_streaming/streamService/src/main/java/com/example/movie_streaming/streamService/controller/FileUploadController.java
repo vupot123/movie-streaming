@@ -1,5 +1,6 @@
 package com.example.movie_streaming.streamService.controller;
 
+import com.example.movie_streaming.streamService.model.entity.SingleMovieStream;
 import com.example.movie_streaming.streamService.service.FileUploadService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +17,9 @@ public class FileUploadController {
     private FileUploadService fileUploadService;
 
     @PostMapping("/file")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("fileId") String fileId) {
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("id") Long id) {
         try {
-            String fileUrl = fileUploadService.uploadFileToCloud(file, fileId);
+            String fileUrl = fileUploadService.uploadFileToCloud(file, id);
             return ResponseEntity.ok("Tệp đã được tải lên thành công. URL tệp: " + fileUrl);
         } catch (Exception e) {
             System.err.println("Lỗi: " + e.getMessage());
@@ -27,10 +28,10 @@ public class FileUploadController {
     }
 
     @DeleteMapping("/file")
-    public ResponseEntity<String> deleteFile(@RequestParam("fileId") String fileId, @RequestParam("fileName") String fileName) {
+    public ResponseEntity<String> deleteFile(@RequestParam("id") Long id, @RequestParam("fileName") String fileName) {
         try {
-            fileUploadService.deleteFile(fileId, fileName);
-            return ResponseEntity.ok("Tệp đã được xóa thành công cho fileId: " + fileId);
+            fileUploadService.deleteFile(id, fileName);
+            return ResponseEntity.ok("Tệp đã được xóa thành công cho id: " + id);
         } catch (Exception e) {
             System.err.println("Lỗi: " + e.getMessage());
             return ResponseEntity.badRequest().body("Lỗi khi xóa tệp: " + e.getMessage());
@@ -38,10 +39,10 @@ public class FileUploadController {
     }
 
     @GetMapping("/files")
-    public ResponseEntity<List<String>> getAllFileUrls() {
+    public ResponseEntity<List<SingleMovieStream>> getAllFileUrls() {
         try {
-            List<String> fileUrls = fileUploadService.getAllFileUrls();
-            return ResponseEntity.ok(fileUrls);
+            List<SingleMovieStream> streams = fileUploadService.getAllFileStreams();
+            return ResponseEntity.ok(streams);
         } catch (Exception e) {
             System.err.println("Lỗi: " + e.getMessage());
             return ResponseEntity.badRequest().body(null);

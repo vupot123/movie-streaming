@@ -4,9 +4,16 @@ import com.example.movie_streaming.streamService.model.entity.SingleMovieStream;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface SingleMovieStreamRepository extends JpaRepository<SingleMovieStream, Long> {
     boolean existsByFileUrl(String fileUrl);
-    void deleteByFileId(Long fileId);
-    List<SingleMovieStream> findAllByOrderByFileIdAsc();
+
+    List<SingleMovieStream> findAllByOrderByIdAsc();
+
+    boolean existsByFileName(String fileName);
+
+    Optional<SingleMovieStream> findByFileName(String fileName);
+
+    void deleteByFileName(String fileName);
 }

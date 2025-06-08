@@ -22,14 +22,13 @@ public class ErrorReportController {
     @PostMapping("/{movieId}")
     public ResponseEntity<ApiResponse<ErrorReportResponse>> createReport(
             @PathVariable("movieId") Long movieId,
-            @RequestBody CreateErrorReportRequest request
-    ) {
+            @RequestBody CreateErrorReportRequest request) {
         try {
             ErrorReportResponse response = errorReportService.createReport(movieId, request);
-            return ResponseEntity.ok(new ApiResponse<>(200, "Created report successfully", response));
+            return ResponseEntity.ok(new ApiResponse<>(200, "Tạo báo cáo lỗi thành công", response));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(500, "Failed to create report: " + e.getMessage(), null));
+                    .body(new ApiResponse<>(500, "Lỗi khi tạo báo cáo: " + e.getMessage(), null));
         }
     }
 
@@ -37,24 +36,34 @@ public class ErrorReportController {
     public ResponseEntity<ApiResponse<List<ErrorReportResponse>>> getAllReports() {
         try {
             List<ErrorReportResponse> allReports = errorReportService.getAllReports();
-            return ResponseEntity.ok(new ApiResponse<>(200, "Fetched reports successfully", allReports));
+            return ResponseEntity.ok(new ApiResponse<>(200, "Lấy danh sách báo cáo lỗi thành công", allReports));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(500, "Failed to fetch report: " + e.getMessage(), null));
+                    .body(new ApiResponse<>(500, "Lỗi khi lấy báo cáo: " + e.getMessage(), null));
         }
     }
 
     @PutMapping("/{id}/status")
     public ResponseEntity<ApiResponse<ErrorReportResponse>> updateStatus(
             @PathVariable("id") Long id,
-            @RequestParam ErrorStatus status
-    ) {
+            @RequestParam ErrorStatus status) {
         try {
             ErrorReportResponse updated = errorReportService.updateStatus(id, status);
-            return ResponseEntity.ok(new ApiResponse<>(200, "Updated report successfully", updated));
+            return ResponseEntity.ok(new ApiResponse<>(200, "Cập nhật trạng thái báo cáo thành công", updated));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(500, "Failed to update banner: " + e.getMessage(), null));
+                    .body(new ApiResponse<>(500, "Lỗi khi cập nhật trạng thái: " + e.getMessage(), null));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteReport(@PathVariable("id") Long id) {
+        try {
+            errorReportService.deleteReport(id);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Xóa báo cáo lỗi thành công", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(500, "Lỗi khi xóa báo cáo: " + e.getMessage(), null));
         }
     }
 }

@@ -36,6 +36,11 @@ public class SecurityConfig {
                         // Các yêu cầu GET tới các endpoint movies không cần token
                         .requestMatchers(HttpMethod.GET, "/api/movies").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/movies/**").permitAll()
+                        // Allow filter & search without token
+                        .requestMatchers(HttpMethod.POST, "/api/movies/filter").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/movies/search").permitAll()
+                        // Allow addview for USER or ADMIN
+                        .requestMatchers(HttpMethod.POST, "/api/movies/*/view").hasAnyRole("USER", "ADMIN")
                         // Endpoints cần token và role ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/movies").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/movies/**").hasRole("ADMIN")
