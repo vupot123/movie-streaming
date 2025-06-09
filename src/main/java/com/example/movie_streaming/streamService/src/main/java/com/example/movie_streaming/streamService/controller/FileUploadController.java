@@ -17,9 +17,9 @@ public class FileUploadController {
     private FileUploadService fileUploadService;
 
     @PostMapping("/file")
-    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file, @RequestParam("id") Long id) {
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
-            String fileUrl = fileUploadService.uploadFileToCloud(file, id);
+            String fileUrl = fileUploadService.uploadFileToCloud(file);
             return ResponseEntity.ok("Tệp đã được tải lên thành công. URL tệp: " + fileUrl);
         } catch (Exception e) {
             System.err.println("Lỗi: " + e.getMessage());
@@ -28,10 +28,10 @@ public class FileUploadController {
     }
 
     @DeleteMapping("/file")
-    public ResponseEntity<String> deleteFile(@RequestParam("id") Long id, @RequestParam("fileName") String fileName) {
+    public ResponseEntity<String> deleteFile(@RequestParam("fileId") Long fileId) {
         try {
-            fileUploadService.deleteFile(id, fileName);
-            return ResponseEntity.ok("Tệp đã được xóa thành công cho id: " + id);
+            fileUploadService.deleteFile(fileId);
+            return ResponseEntity.ok("Tệp đã được xóa thành công cho fileId: " + fileId);
         } catch (Exception e) {
             System.err.println("Lỗi: " + e.getMessage());
             return ResponseEntity.badRequest().body("Lỗi khi xóa tệp: " + e.getMessage());

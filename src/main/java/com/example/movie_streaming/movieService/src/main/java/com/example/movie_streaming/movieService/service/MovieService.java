@@ -7,7 +7,6 @@ import com.example.movie_streaming.movieService.model.dto.request.CreateMovieReq
 import com.example.movie_streaming.movieService.model.dto.request.MovieFilterRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
-import com.example.movie_streaming.movieService.model.dto.response.StreamFile;
 import com.example.movie_streaming.movieService.model.entity.*;
 import com.example.movie_streaming.movieService.repository.*;
 import com.example.movie_streaming.movieService.specification.MovieSpecification;
@@ -19,7 +18,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Calendar;
 import java.util.List;
@@ -40,7 +38,6 @@ public class MovieService {
     private final MovieCountryRepository movieCountryRepository;
     private final SeasonRepository seasonRepository;
     private final MovieMapper movieMapper;
-    private final WebClient streamWebClient;
 
     public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
         int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() - 1 : 0;
@@ -53,11 +50,7 @@ public class MovieService {
     public List<MovieResponse> getAllMovies() {
         List<Movie> movies = movieRepository.findAll();
         movies.forEach(this::initializeMovie);
-        return movies.stream().map(movie -> {
-            MovieResponse response = movieMapper.toResponse(movie);
-            response.setStreamUrl(getStreamUrlFromService(movie.getId()));
-            return response;
-        }).collect(Collectors.toList());
+        return movies.stream().map(movieMapper::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -68,28 +61,9 @@ public class MovieService {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim với ID: " + id));
         initializeMovie(movie);
-        movie.setStreamUrl(getStreamUrlFromService(movie.getId()));
+        movie.setStreamUrl(null);
         return movieMapper.toResponse(movie);
     }
-
-    private String getStreamUrlFromService(Long movieId) {
-        try {
-            StreamFile[] files = streamWebClient.get()
-                    .uri("/upload/movie/{movieId}", movieId)
-                    .retrieve()
-                    .bodyToMono(StreamFile[].class)
-                    .block();
-
-            if (files != null && files.length > 0) {
-                return files[0].getFileUrl(); // lấy file đầu tiên
-            }
-        } catch (Exception e) {
-            log.warn("Không thể lấy streamUrl cho movieId {}: {}", movieId, e.getMessage());
-        }
-        return null;
-    }
-
-
 
     @Transactional
     public MovieResponse createMovie(CreateMovieRequest request) {

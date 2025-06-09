@@ -3,19 +3,22 @@ package com.example.movie_streaming.streamService.kafka;
 import com.example.movie_streaming.streamService.model.entity.SingleMovieStream;
 import com.example.movie_streaming.streamService.repository.SingleMovieStreamRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.Storage;
+import jakarta.transaction.Transactional;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 @Service
 public class KafkaConsumerService {
@@ -26,13 +29,19 @@ public class KafkaConsumerService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final SingleMovieStreamRepository singleMovieStreamRepository;
     private final ObjectMapper objectMapper;
+    private final Storage storage; // Thêm dependency để xóa file trên GCS
+    @Value("${spring.cloud.gcp.storage.bucket}") // Thêm bucketName
+    private String bucketName;
 
+    @Autowired
     public KafkaConsumerService(KafkaTemplate<String, String> kafkaTemplate,
                                 SingleMovieStreamRepository singleMovieStreamRepository,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                Storage storage) {
         this.kafkaTemplate = kafkaTemplate;
         this.singleMovieStreamRepository = singleMovieStreamRepository;
         this.objectMapper = objectMapper;
+        this.storage = storage;
     }
 
     @KafkaListener(topics = "file-uploaded-topic", groupId = "file-uploaded-group", containerFactory = "kafkaListenerContainerFactory")
@@ -63,24 +72,24 @@ public class KafkaConsumerService {
                         break;
                     case "GET":
                     case "GET_ALL":
-                        logger.info("Processed {} action for payload: {}", message.getAction(), payload);
+                        logger.info("Received {} action for payload: {}. Ignoring as direct DB query is used.", message.getAction(), payload);
                         break;
                     default:
-                        logger.warn("Unsupported action: {}", message.getAction());
+                        logger.warn("Unsupported action: {}. Ignoring message: {}", message.getAction(), messageJson);
                         throw new IllegalArgumentException("Hành động không hợp lệ: " + action);
                 }
             } else {
-                logger.warn("Unsupported entity type: {}", entityType);
+                logger.warn("Unsupported entity type: {}. Ignoring message: {}", entityType, messageJson);
                 throw new IllegalArgumentException("Loại thực thể không hợp lệ: " + entityType);
             }
 
             // Xác nhận message đã xử lý thành công
             acknowledgment.acknowledge();
         } catch (IllegalArgumentException e) {
-            logger.error("Validation error processing message: {}. Error: {}", messageJson, e.getMessage());
+            logger.error("Validation error processing message: {}. Error: {}. Sending to DLQ.", messageJson, e.getMessage());
             sendToDlq(messageJson);
         } catch (Exception e) {
-            logger.error("Error processing message: {}. Error: {}", messageJson, e.getMessage(), e);
+            logger.error("Error processing message: {}. Error: {}. Sending to DLQ.", messageJson, e.getMessage(), e);
             sendToDlq(messageJson);
         }
     }
@@ -98,7 +107,7 @@ public class KafkaConsumerService {
 
             // Kiểm tra trùng fileName (đảm bảo nhất quán với GCS)
             if (singleMovieStreamRepository.existsByFileName(fileName)) {
-                logger.warn("FileName {} already exists in database.", fileName);
+                logger.warn("FileName {} already exists in database. Skipping upload.", fileName);
                 throw new IllegalArgumentException("File name already exists: " + fileName);
             }
 
@@ -109,36 +118,57 @@ public class KafkaConsumerService {
             singleMovieStreamRepository.save(stream);
             logger.info("Created SingleMovieStream from Kafka: {}", stream);
         } catch (IllegalArgumentException e) {
-            logger.error("Validation error handling UPLOAD: {}", e.getMessage());
+            logger.error("Validation error handling UPLOAD: {}. Error: {}", payload, e.getMessage());
             throw e;
         } catch (Exception e) {
-            logger.error("Error handling UPLOAD: {}", e.getMessage());
+            logger.error("Error handling UPLOAD: {}. Error: {}", payload, e.getMessage(), e);
             throw new RuntimeException("Unexpected error during UPLOAD: " + e.getMessage(), e);
         }
     }
 
     private void handleDelete(Map<String, Object> payload) {
         try {
-            String fileName = (String) payload.get("fileName");
-
-            if (fileName == null) {
-                throw new IllegalArgumentException("fileName không được null");
+            Object fileIdObj = payload.get("fileId"); // Lấy giá trị fileId từ payload
+            if (fileIdObj == null) {
+                throw new IllegalArgumentException("fileId không được null");
             }
 
-            logger.info("Processing DELETE for fileName: {}", fileName);
-
-            Optional<SingleMovieStream> streamOpt = singleMovieStreamRepository.findByFileName(fileName);
-            if (streamOpt.isPresent()) {
-                singleMovieStreamRepository.delete(streamOpt.get());
-                logger.info("Deleted SingleMovieStream for fileName: {}", fileName);
+            // Chuyển đổi fileId thành Long một cách an toàn
+            Long fileId;
+            if (fileIdObj instanceof Number) {
+                fileId = ((Number) fileIdObj).longValue(); // Chuyển đổi từ Integer hoặc Long
+                logger.debug("Converted fileId {} to Long", fileId);
             } else {
-                logger.warn("No SingleMovieStream found for fileName: {}", fileName);
+                throw new IllegalArgumentException("fileId must be a number, found: " + fileIdObj.getClass().getName());
+            }
+
+            logger.info("Processing DELETE for fileId: {}", fileId);
+
+            Optional<SingleMovieStream> streamOpt = singleMovieStreamRepository.findById(fileId);
+            if (streamOpt.isPresent()) {
+                SingleMovieStream stream = streamOpt.get();
+                String fileName = stream.getFileName();
+
+                // Xóa file trên GCS
+                Blob blob = storage.get(bucketName, fileName);
+                if (blob != null) {
+                    storage.delete(bucketName, fileName);
+                    logger.info("Deleted file from GCS: {}", fileName);
+                } else {
+                    logger.warn("File {} not found in GCS for fileId: {}", fileName, fileId);
+                }
+
+                // Xóa bản ghi trong database
+                singleMovieStreamRepository.delete(stream);
+                logger.info("Deleted SingleMovieStream from database for fileId: {}", fileId);
+            } else {
+                logger.warn("No SingleMovieStream found for fileId: {}. Skipping delete.", fileId);
             }
         } catch (IllegalArgumentException e) {
-            logger.error("Validation error handling DELETE: {}", e.getMessage());
+            logger.error("Validation error handling DELETE: {}. Error: {}", payload, e.getMessage());
             throw e;
         } catch (Exception e) {
-            logger.error("Error handling DELETE: {}", e.getMessage());
+            logger.error("Error handling DELETE: {}. Error: {}", payload, e.getMessage(), e);
             throw new RuntimeException("Unexpected error during DELETE: " + e.getMessage(), e);
         }
     }
@@ -149,10 +179,10 @@ public class KafkaConsumerService {
             kafkaTemplate.send(DLQ_TOPIC, messageJson).get(); // Chặn thread để chờ gửi xong
             logger.info("Successfully sent to DLQ: {}", messageJson);
         } catch (InterruptedException e) {
-            logger.error("Interrupted while sending to DLQ: {}. Error: {}", messageJson, e.getMessage());
+            logger.error("Interrupted while sending to DLQ: {}. Error: {}. Restoring interrupt status.", messageJson, e.getMessage());
             Thread.currentThread().interrupt(); // Khôi phục trạng thái gián đoạn
         } catch (ExecutionException e) {
-            logger.error("Execution error while sending to DLQ: {}. Error: {}", messageJson, e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
+            logger.error("Execution error while sending to DLQ: {}. Cause: {}", messageJson, e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
         } catch (Exception e) {
             logger.error("Unexpected error while sending to DLQ: {}. Error: {}", messageJson, e.getMessage());
         }

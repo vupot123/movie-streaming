@@ -1,7 +1,6 @@
 package com.example.movie_streaming.common.security;
 
 import com.example.movie_streaming.common.configuration.JwtProperties;
-import com.example.movie_streaming.common.exceptions.InvalidCredentialsException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -50,20 +49,15 @@ public class JwtProvider {
     // Kiểm tra token hợp lệ
     public boolean validateToken(String token) {
         try {
-            Jws<Claims> claims = Jwts.parserBuilder()
+            Jwts.parserBuilder()
                     .setSigningKey(key)
                     .build()
                     .parseClaimsJws(token);
-
-            return !claims.getBody().getExpiration().before(new Date());
-
-        } catch (ExpiredJwtException e) {
-            throw new InvalidCredentialsException("Token đã hết hạn");
-        } catch (UnsupportedJwtException | MalformedJwtException | SignatureException | IllegalArgumentException e) {
-            throw new InvalidCredentialsException("Token không hợp lệ");
+            return !isTokenExpired(token);
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
         }
     }
-
 
     // Trích xuất một claim bất kỳ từ token
     private <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {

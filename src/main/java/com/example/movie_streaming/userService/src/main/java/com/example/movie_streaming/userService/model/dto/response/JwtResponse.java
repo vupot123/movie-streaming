@@ -1,14 +1,11 @@
 package com.example.movie_streaming.userService.model.dto.response;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-@Getter
-@Setter
-@NoArgsConstructor
+@Data
 @AllArgsConstructor
-@Builder
 public class JwtResponse {
     private String role;
-    private String username;
     private String accessToken;
 }

@@ -109,7 +109,6 @@
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 
-
 		<!-- Test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -122,13 +121,6 @@
 			<version>${spring-kafka.version}</version>
 			<scope>test</scope>
 		</dependency>
-
-		<!-- WebClient -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux</artifactId>
-		</dependency>
-
 	</dependencies>
 
 	<build>

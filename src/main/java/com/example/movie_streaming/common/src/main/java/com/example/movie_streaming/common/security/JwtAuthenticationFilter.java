@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -37,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        // Bỏ qua kiểm tra token cho các endpoint công khai
+        // Bỏ qua kiểm tra token cho các endpoint không cần xác thực
         if (EXCLUDED_PATHS.contains(path) || isPublicEndpoint(request)) {
             filterChain.doFilter(request, response);
             return;
@@ -61,12 +63,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String username = jwtProvider.getUsernameFromToken(token);
             String role = jwtProvider.getRoleFromToken(token);
 
-            List<SimpleGrantedAuthority> authorities =
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
-
+            // Thiết lập thông tin xác thực với role
+            List<SimpleGrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(username, null, authorities);
-
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             filterChain.doFilter(request, response);
@@ -75,27 +75,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    // ✅ Cho phép public các endpoint GET và filter/search POST
+    // Kiểm tra xem endpoint có phải là public không
     private boolean isPublicEndpoint(HttpServletRequest request) {
         String path = request.getServletPath();
         String method = request.getMethod();
-
-        return ("GET".equals(method) && (
-                path.matches("/api/movies(/\\d+)?") || // /api/movies, /api/movies/{id}
-                        path.startsWith("/api/movies/search")
-        )) || ("POST".equals(method) && path.equals("/api/movies/filter"));
+        return "GET".equals(method) && (
+                path.matches("/api/movies(/\\d+)?") || // GET /api/movies, GET /api/movies/{id}
+                        path.startsWith("/api/movies/filter") || // GET /api/movies/filter
+                        path.startsWith("/api/movies/search")    // GET /api/movies/search
+        );
     }
 
-    // ✅ Tránh Map.of với giá trị null
+    // Gửi response lỗi
     private void sendErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
-        Map<String, Object> error = new HashMap<>();
-        error.put("status", status);
-        error.put("message", message);
-        error.put("data", null);
-
-        new ObjectMapper().writeValue(response.getOutputStream(), error);
+        new ObjectMapper().writeValue(response.getOutputStream(), Map.of(
+                "status", status,
+                "message", message,
+                "data", null
+        ));
     }
 }

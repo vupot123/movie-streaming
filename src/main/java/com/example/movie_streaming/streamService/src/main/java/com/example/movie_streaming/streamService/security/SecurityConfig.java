@@ -28,11 +28,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints chỉ ADMIN được phép truy cập
-                        .requestMatchers(HttpMethod.POST, "/api/movies").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/movies/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/movies/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/movies/**").hasRole("ADMIN")
+                        // Bảo vệ tất cả các endpoint của streamService yêu cầu vai trò ADMIN
                         .requestMatchers(HttpMethod.POST, "/upload/file").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/upload/file").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/upload/files").hasRole("ADMIN")
