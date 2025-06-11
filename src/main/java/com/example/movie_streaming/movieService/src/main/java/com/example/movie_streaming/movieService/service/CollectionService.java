@@ -48,7 +48,7 @@ public class CollectionService {
         if (request.getMovieIds() != null) {
             for (Long movieId : request.getMovieIds()) {
                 Movie movie = movieRepo.findById(movieId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy movie ID: " + movieId));
+                        .orElseThrow(() -> new ResourceNotFoundException("Not found movie ID: " + movieId));
 
                 CollectionMovie relation = new CollectionMovie();
                 relation.setId(new CollectionMovieId(collection.getId(), movie.getId()));
@@ -68,7 +68,7 @@ public class CollectionService {
     @Transactional
     public CollectionResponse updateCollection(Long id, UpdateCollectionRequest request) {
         Collection collection = collectionRepo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy collection"));
+                .orElseThrow(() -> new ResourceNotFoundException("Not found collection"));
 
         collection.setName(request.getName());
         collection.setFeatured(Boolean.TRUE.equals(request.getFeatured()));
@@ -87,9 +87,15 @@ public class CollectionService {
                 .collect(Collectors.toList());
     }
 
+    public List<CollectionResponse> getNotFeaturedCollections() {
+        return collectionRepo.findByFeaturedFalse().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void deleteCollection(Long id) {
-        if (!collectionRepo.existsById(id)) throw new ResourceNotFoundException("Không tìm thấy collection");
+        if (!collectionRepo.existsById(id)) throw new ResourceNotFoundException("Not found collection");
         collectionMovieRepo.deleteByCollectionId(id);
         collectionRepo.deleteById(id);
 
@@ -100,9 +106,9 @@ public class CollectionService {
     @Transactional
     public void addMovieToCollection(Long collectionId, Long movieId) {
         Collection collection = collectionRepo.findById(collectionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy collection"));
+                .orElseThrow(() -> new ResourceNotFoundException("Not found collection"));
         Movie movie = movieRepo.findById(movieId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy movie"));
+                .orElseThrow(() -> new ResourceNotFoundException("Not found movie"));
 
         CollectionMovieId cmId = new CollectionMovieId(collectionId, movieId);
         if (!collectionMovieRepo.existsById(cmId)) {

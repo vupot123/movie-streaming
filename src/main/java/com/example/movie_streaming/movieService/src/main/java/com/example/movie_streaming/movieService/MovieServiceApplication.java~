@@ -8,6 +8,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication(scanBasePackages = "com.example.movie_streaming")
 @EnableConfigurationProperties(JwtProperties.class)
+@ComponentScan("com.example.movie_streaming.common")
 public class MovieServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(MovieServiceApplication.class, args);

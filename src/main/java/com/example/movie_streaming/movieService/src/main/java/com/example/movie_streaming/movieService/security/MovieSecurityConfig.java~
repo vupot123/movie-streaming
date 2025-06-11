@@ -4,14 +4,23 @@ import com.example.movie_streaming.common.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.firewall.HttpFirewall;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class MovieSecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -22,34 +31,50 @@ public class MovieSecurityConfig {
 
     @Bean
     public SecurityFilterChain movieSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.setSharedObject(HttpFirewall.class, allowUrlEncodedSlashHttpFirewall());
+
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {}) // Dùng corsConfigurationSource() đã được cấu hình trong common
+                .cors(cors -> {}) // CORS sẽ sử dụng bean corsConfigurationSource()
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
+                        // Public
                         .requestMatchers("/api/user/login", "/api/user/register", "/api/movies/generate-token").permitAll()
-
-                        // Các yêu cầu GET không cần token
-                        .requestMatchers(HttpMethod.GET, "/api/movies", "/api/movies/**", "/api/movies/search").permitAll()
-
-                        // POST filter search không cần token
+                        .requestMatchers(HttpMethod.GET, "/api/collections/featured", "/api/collections/not-featured").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/movies/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/movies/filter").permitAll()
 
-                        // POST add view cần USER hoặc ADMIN
-                        .requestMatchers(HttpMethod.POST, "/api/movies/*/view").hasAnyRole("USER", "ADMIN")
+                        // View tracking
+                        .requestMatchers(HttpMethod.POST, "/api/movies/*/views").hasAnyRole("USER", "ADMIN")
 
-                        // ADMIN quyền sửa
-                        .requestMatchers(HttpMethod.POST, "/api/movies").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/movies/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/movies/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/movies/**").hasRole("ADMIN")
+                        // Admin-only
+                        .requestMatchers("/api/movies/**", "/api/collections/**").hasRole("ADMIN")
 
-                        // Tất cả các endpoint còn lại yêu cầu xác thực
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedOriginPattern("*");
+        config.addAllowedMethod("*");
+        config.addAllowedHeader("*");
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
+    @Bean
+    public HttpFirewall allowUrlEncodedSlashHttpFirewall() {
+        StrictHttpFirewall firewall = new StrictHttpFirewall();
+        firewall.setAllowUrlEncodedSlash(true);
+        firewall.setAllowSemicolon(true);
+        return firewall;
     }
 }

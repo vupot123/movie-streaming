@@ -24,10 +24,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtProvider = jwtProvider;
     }
 
-    private static final List<String> EXCLUDED_PATHS = List.of(
+    private static final Set<String> PUBLIC_PATHS = Set.of(
             "/api/user/login",
             "/api/user/register",
-            "/api/movies/generate-token"
+            "/api/movies/generate-token",
+            "/api/collections/featured"
     );
 
     @Override
@@ -37,56 +38,61 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getServletPath();
 
-        // Bỏ qua kiểm tra token cho các endpoint công khai
-        if (EXCLUDED_PATHS.contains(path) || isPublicEndpoint(request)) {
+        // Nếu là endpoint công khai, bỏ qua xác thực
+        if (isPublicEndpoint(request)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String authHeader = request.getHeader("Authorization");
 
-        // Kiểm tra header Authorization
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            sendErrorResponse(response, 403, "Missing or invalid Authorization header");
+            sendErrorResponse(response, 403, "Thiếu hoặc sai định dạng Authorization header");
             return;
         }
 
         try {
             String token = authHeader.substring(7);
+
             if (!jwtProvider.validateToken(token)) {
-                sendErrorResponse(response, 403, "Invalid or expired JWT token");
+                sendErrorResponse(response, 403, "JWT không hợp lệ hoặc đã hết hạn");
                 return;
             }
 
             String username = jwtProvider.getUsernameFromToken(token);
             String role = jwtProvider.getRoleFromToken(token);
 
-            List<SimpleGrantedAuthority> authorities =
-                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
-
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    username,
+                    null,
+                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+            );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-
             filterChain.doFilter(request, response);
+
         } catch (Exception e) {
-            sendErrorResponse(response, 403, "Invalid or expired JWT token: " + e.getMessage());
+            sendErrorResponse(response, 403, "Lỗi xác thực JWT: " + e.getMessage());
         }
     }
 
-    // ✅ Cho phép public các endpoint GET và filter/search POST
     private boolean isPublicEndpoint(HttpServletRequest request) {
         String path = request.getServletPath();
         String method = request.getMethod();
 
-        return ("GET".equals(method) && (
-                path.matches("/api/movies(/\\d+)?") || // /api/movies, /api/movies/{id}
-                        path.startsWith("/api/movies/search")
-        )) || ("POST".equals(method) && path.equals("/api/movies/filter"));
+        if (PUBLIC_PATHS.contains(path)) return true;
+
+        if ("GET".equalsIgnoreCase(method)) {
+            return path.matches("/api/movies(/\\d+)?") || path.startsWith("/api/movies/search");
+        }
+
+        if ("POST".equalsIgnoreCase(method)) {
+            return path.equals("/api/movies/filter");
+        }
+
+        return false;
     }
 
-    // ✅ Tránh Map.of với giá trị null
     private void sendErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

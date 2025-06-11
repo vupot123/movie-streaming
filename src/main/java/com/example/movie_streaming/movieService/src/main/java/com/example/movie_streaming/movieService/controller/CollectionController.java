@@ -15,7 +15,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/collections")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class CollectionController {
 
     private final CollectionService collectionService;
@@ -23,14 +22,14 @@ public class CollectionController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<CollectionResponse>>> getAllCollections() {
         List<CollectionResponse> collections = collectionService.getAllCollections();
-        return ResponseEntity.ok(ApiResponse.success(200, "Lấy tất cả bộ sưu tập thành công", collections));
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched full successfully", collections));
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<CollectionResponse>> createCollection(
             @RequestBody CreateCollectionRequest request) {
         CollectionResponse response = collectionService.createCollection(request);
-        return ResponseEntity.ok(ApiResponse.success(200, "Tạo bộ sưu tập thành công", response));
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection created successfully", response));
     }
 
     @PutMapping("/{id}")
@@ -38,13 +37,13 @@ public class CollectionController {
             @PathVariable("id") Long id,
             @RequestBody UpdateCollectionRequest request) {
         CollectionResponse response = collectionService.updateCollection(id, request);
-        return ResponseEntity.ok(ApiResponse.success(200, "Cập nhật bộ sưu tập thành công", response));
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection updated successfully", response));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteCollection(@PathVariable("id") Long id) {
         collectionService.deleteCollection(id);
-        return ResponseEntity.ok(ApiResponse.success(200, "Xóa bộ sưu tập thành công", null));
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection deleted successfully", null));
     }
 
     @PostMapping("/{collectionId}/movies/{movieId}")
@@ -52,7 +51,7 @@ public class CollectionController {
             @PathVariable("collectionId") Long collectionId,
             @PathVariable("movieId") Long movieId) {
         collectionService.addMovieToCollection(collectionId, movieId);
-        return ResponseEntity.ok(ApiResponse.success(200, "Đã thêm phim vào bộ sưu tập", null));
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection added movie successfully", null));
     }
 
     @DeleteMapping("/{collectionId}/movies/{movieId}")
@@ -60,12 +59,19 @@ public class CollectionController {
             @PathVariable("collectionId") Long collectionId,
             @PathVariable("movieId") Long movieId) {
         collectionService.removeMovieFromCollection(collectionId, movieId);
-        return ResponseEntity.ok(ApiResponse.success(200, "Đã xóa phim khỏi bộ sưu tập", null));
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection deleted movie successfully", null));
     }
 
     @GetMapping("/featured")
     public ResponseEntity<ApiResponse<List<CollectionResponse>>> getFeaturedCollections() {
         List<CollectionResponse> collections = collectionService.getFeaturedCollections();
-        return ResponseEntity.ok(ApiResponse.success(200, "Lấy danh sách bộ sưu tập nổi bật thành công", collections));
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched featured successfully", collections));
     }
+
+    @GetMapping("/not-featured")
+    public ResponseEntity<ApiResponse<List<CollectionResponse>>> getNotFeaturedCollections() {
+        List<CollectionResponse> collections = collectionService.getNotFeaturedCollections();
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched non-featured successfully", collections));
+    }
+
 }

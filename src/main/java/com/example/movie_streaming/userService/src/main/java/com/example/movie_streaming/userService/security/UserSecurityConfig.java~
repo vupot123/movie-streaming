@@ -9,11 +9,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-public class SecurityConfig {
+public class UserSecurityConfig {
 
     private final JwtProvider jwtProvider;
 
-    public SecurityConfig(JwtProvider jwtProvider) {
+    public UserSecurityConfig(JwtProvider jwtProvider) {
         this.jwtProvider = jwtProvider;
     }
 
