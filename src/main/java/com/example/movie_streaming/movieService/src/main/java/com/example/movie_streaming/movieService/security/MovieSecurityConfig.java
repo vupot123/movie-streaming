@@ -35,20 +35,23 @@ public class MovieSecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {}) // Enable CORS using corsConfigurationSource()
+                .cors(cors -> {}) // Enable CORS
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public
+                        // Public endpoints
                         .requestMatchers("/api/user/login", "/api/user/register", "/api/movies/generate-token").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/collections/featured", "/api/collections/not-featured").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/movies/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/movies/filter").permitAll()
 
-                        // Authenticated
-                        .requestMatchers(HttpMethod.POST, "/api/movies/**/views").hasAnyRole("USER", "ADMIN")
+                        // Authenticated for view tracking (specify clearly, avoid /**/views)
+                        .requestMatchers(HttpMethod.POST, "/api/movies/{id}/views", "/api/movies/views").hasAnyRole("USER", "ADMIN")
 
-                        // Admin-only
-                        .requestMatchers("/api/movies/**", "/api/collections/**").hasRole("ADMIN")
+                        // Admin-only endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/movies").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/movies/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/movies/**").hasRole("ADMIN")
+                        .requestMatchers("/api/collections/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 )

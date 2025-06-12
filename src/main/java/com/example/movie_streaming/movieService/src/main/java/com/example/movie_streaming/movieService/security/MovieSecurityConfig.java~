@@ -35,7 +35,7 @@ public class MovieSecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {}) // CORS sẽ sử dụng bean corsConfigurationSource()
+                .cors(cors -> {}) // Enable CORS using corsConfigurationSource()
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public
@@ -44,8 +44,8 @@ public class MovieSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/movies/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/movies/filter").permitAll()
 
-                        // View tracking
-                        .requestMatchers(HttpMethod.POST, "/api/movies/*/views").hasAnyRole("USER", "ADMIN")
+                        // Authenticated
+                        .requestMatchers(HttpMethod.POST, "/api/movies/**/views").hasAnyRole("USER", "ADMIN")
 
                         // Admin-only
                         .requestMatchers("/api/movies/**", "/api/collections/**").hasRole("ADMIN")

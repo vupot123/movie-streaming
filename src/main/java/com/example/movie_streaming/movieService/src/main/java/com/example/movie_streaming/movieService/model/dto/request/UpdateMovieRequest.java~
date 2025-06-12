@@ -2,7 +2,6 @@ package com.example.movie_streaming.movieService.model.dto.request;
 
 import lombok.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Getter
@@ -20,12 +19,11 @@ public class UpdateMovieRequest {
     private String intro; // Giới thiệu phim (tùy chọn)
     private String ageRating; // Độ tuổi: PG-13, R, v.v. (tùy chọn)
     private Long views; // Lượt xem (tùy chọn)
-
     private List<Long> actorIds; // Danh sách ID diễn viên (tùy chọn)
-    private List<ActorRequest> newActors; // Diễn viên mới (tùy chọn)
-
+    private List<ActorRequest> newActors;
     private List<Integer> genreIds; // Danh sách ID thể loại (tùy chọn)
     private Integer countryId; // Danh sách ID quốc gia (tùy chọn)
+    //private List<String> trailerUrls; // Danh sách URL trailer (tùy chọn)
     private String smallBanner; // URL banner nhỏ (tùy chọn)
     private String largeBanner; // URL banner lớn (tùy chọn)
 }

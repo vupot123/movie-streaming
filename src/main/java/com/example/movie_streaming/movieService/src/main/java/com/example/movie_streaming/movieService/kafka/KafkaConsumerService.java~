@@ -85,7 +85,7 @@ public class KafkaConsumerService {
                     createRequest.setViews(((Number) message.getPayload().get("views")).longValue());
                     createRequest.setActorIds((List<Long>) message.getPayload().get("actorIds"));
                     createRequest.setGenreIds((List<Integer>) message.getPayload().get("genreIds"));
-                    createRequest.setCountryId(Integer.parseInt((String)  message.getPayload().get("countryId")));
+                    createRequest.setCountryId((Integer.parseInt((String) message.getPayload().get("countryId"));
                     createRequest.setSmallBanner((String) message.getPayload().get("smallBanner"));
                     createRequest.setLargeBanner((String) message.getPayload().get("largeBanner"));
                     movieService.createMovie(createRequest);
@@ -102,7 +102,7 @@ public class KafkaConsumerService {
                     updateRequest.setViews(((Number) message.getPayload().get("views")).longValue());
                     updateRequest.setActorIds((List<Long>) message.getPayload().get("actorIds"));
                     updateRequest.setGenreIds((List<Integer>) message.getPayload().get("genreIds"));
-                    updateRequest.setCountryId(Integer.parseInt((String)  message.getPayload().get("countryId")));
+                    updateRequest.setCountryId(Integer.parseInt((String)  message.getPayload().get("countryId"));
                     updateRequest.setSmallBanner((String) message.getPayload().get("smallBanner"));
                     updateRequest.setLargeBanner((String) message.getPayload().get("largeBanner"));
                     movieService.updateMovie(entityId, updateRequest);

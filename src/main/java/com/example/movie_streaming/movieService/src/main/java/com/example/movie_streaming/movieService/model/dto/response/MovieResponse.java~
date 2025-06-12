@@ -26,7 +26,7 @@ public class MovieResponse {
     private Set<CollectionResponse> collections;
     private Set<GenreResponse> genreNames;
     private String countries;
+    private String posterUrl;
     private Set<SeasonResponse> seasons;
-    //private String posterUrl;
     //private String streamUrl;
 }

@@ -87,6 +87,12 @@ public class CollectionService {
                 .collect(Collectors.toList());
     }
 
+    public List<CollectionResponse> getNotFeaturedCollections() {
+        return collectionRepo.findByFeaturedFalse().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public void deleteCollection(Long id) {
         if (!collectionRepo.existsById(id)) throw new ResourceNotFoundException("Not found collection");
@@ -139,15 +145,12 @@ public class CollectionService {
 
         List<Movie> movies = movieRepo.findAllByIdIn(new HashSet<>(movieIds));
 
-        List<MovieResponse> movieResponses = movies.stream()
-                .map(movieMapper::toResponse)
-                .toList();
 
         return CollectionResponse.builder()
                 .id(collection.getId())
                 .name(collection.getName())
                 .featured(collection.getFeatured())
-                .movies(movieResponses)
+                .movieIDs(movieIDs)
                 .build();
     }
 }

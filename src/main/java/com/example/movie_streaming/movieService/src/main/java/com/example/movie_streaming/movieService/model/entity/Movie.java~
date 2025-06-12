@@ -57,9 +57,10 @@ public class Movie {
     @JsonIgnore
     private Set<MovieTrailer> trailers;
 
-    @OneToOne(mappedBy = "movie", cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = true)
+    @OneToMany(mappedBy = "movie", fetch = FetchType.LAZY)
     @JsonManagedReference
-    private MovieBanner banner;
+    @JsonIgnore
+    private Set<MovieBanner> banners;
 
     @Transient
     private String streamUrl;

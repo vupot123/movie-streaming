@@ -109,7 +109,7 @@ public class MovieMapper {
         Gender gender = null;
         if (request.getGender() != null) {
             try {
-                gender = Gender.valueOf(request.getGender().trim().toUpperCase());
+                gender = Gender.valueOf(request.getGender().toUpperCase());
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Giới tính không hợp lệ: " + request.getGender());
             }
@@ -123,4 +123,5 @@ public class MovieMapper {
                 .bio(request.getBio())
                 .build();
     }
+
 }

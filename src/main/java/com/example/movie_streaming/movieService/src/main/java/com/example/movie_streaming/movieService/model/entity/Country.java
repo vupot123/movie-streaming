@@ -20,9 +20,4 @@ public class Country {
 
     @Column(unique = true, nullable = false)
     private String name;
-
-    @OneToMany(mappedBy = "country")
-    @ToString.Exclude
-    @JsonIgnore
-    private List<MovieCountry> movieCountries;
 }

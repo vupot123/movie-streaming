@@ -12,5 +12,5 @@ public class CollectionResponse {
     private String name;
     private String description;
     private Boolean featured;
-    private List<MovieResponse> movies;
+    private List<Long> movieIDs;
 }

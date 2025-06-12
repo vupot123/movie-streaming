@@ -17,7 +17,7 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
             "movieGenres.genre",
             "movieCountries.country",
             "trailers",
-            "banners"
+            "banner"
     })
     Optional<Movie> findById(Long id);
 
@@ -26,7 +26,7 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
             "movieGenres.genre",
             "movieCountries.country",
             "trailers",
-            "banners"
+            "banner"
     })
     List<Movie> findAll();
 
@@ -46,8 +46,11 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
             "movieGenres.genre",
             "movieCountries.country",
             "trailers",
-            "banners"
+            "banner",
+            "seasons",
+            "seasons.episodes"
     })
     List<Movie> findAllByIdIn(Set<Long> ids);
+
 
 }

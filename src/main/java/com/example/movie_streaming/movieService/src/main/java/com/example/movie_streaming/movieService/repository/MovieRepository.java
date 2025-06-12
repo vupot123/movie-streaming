@@ -15,18 +15,18 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
     @EntityGraph(attributePaths = {
             "movieActors.actor",
             "movieGenres.genre",
-            "movieCountries.country",
+            "country",
             "trailers",
-            "banners"
+            "banner"
     })
     Optional<Movie> findById(Long id);
 
     @EntityGraph(attributePaths = {
             "movieActors.actor",
             "movieGenres.genre",
-            "movieCountries.country",
+            "country",
             "trailers",
-            "banners"
+            "banner"
     })
     List<Movie> findAll();
 
@@ -44,9 +44,9 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
     @EntityGraph(attributePaths = {
             "movieActors.actor",
             "movieGenres.genre",
-            "movieCountries.country",
+            "country",
             "trailers",
-            "banners",
+            "banner",
             "seasons",
             "seasons.episodes"
     })

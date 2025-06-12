@@ -54,9 +54,11 @@ public class MovieSpecification implements Specification<Movie> {
 
         // Filter theo quốc gia (countries)
         if (filter.getCountries() != null && !filter.getCountries().isEmpty()) {
-            Join<Movie, Country> countryJoin = root.join("country", JoinType.LEFT);
+            Join<Movie, MovieCountry> mcJoin = root.join("movieCountries", JoinType.LEFT);
+            Join<MovieCountry, Country> countryJoin = mcJoin.join("country");
             predicates.add(countryJoin.get("name").in(filter.getCountries()));
         }
+
 
         // Filter theo phiên bản (versions: phụ đề, lồng tiếng...)
         // Giả sử versions được lưu trong bảng episodes (cần join qua seasons và episodes)

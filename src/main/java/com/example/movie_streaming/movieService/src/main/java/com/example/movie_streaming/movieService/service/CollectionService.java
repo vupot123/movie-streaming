@@ -143,17 +143,11 @@ public class CollectionService {
                 .map(m -> m.getMovie().getId())
                 .toList();
 
-        List<Movie> movies = movieRepo.findAllByIdIn(new HashSet<>(movieIds));
-
-        List<MovieResponse> movieResponses = movies.stream()
-                .map(movieMapper::toResponse)
-                .toList();
-
         return CollectionResponse.builder()
                 .id(collection.getId())
                 .name(collection.getName())
                 .featured(collection.getFeatured())
-                .movies(movieResponses)
+                .movieIDs(movieIds)
                 .build();
     }
 }
