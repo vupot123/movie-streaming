@@ -89,6 +89,7 @@ public class UserController {
         }
     }
 
+
     @DeleteMapping("/favorites/{movieId}")
     public ResponseEntity<ApiResponse<String>> removeFavorite(HttpServletRequest request, @PathVariable Long movieId) {
         try {

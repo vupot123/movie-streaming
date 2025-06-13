@@ -21,7 +21,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -66,13 +65,8 @@ public class UserService {
                 .role(1)
                 .createdAt(LocalDateTime.now())
                 .build();
-        try {
-            userRepository.save(user);
-            logger.info("Đăng ký người dùng thành công: {}", user.getUsername());
-        } catch (DataIntegrityViolationException e) {
-            logger.error("Lỗi cơ sở dữ liệu khi đăng ký người dùng: {}", request.getUsername(), e);
-            throw new RuntimeException("Lỗi cơ sở dữ liệu khi đăng ký");
-        }
+        userRepository.save(user);
+        logger.info("Đăng ký người dùng thành công: {}", user.getUsername());
 
         Map<String, Object> payload = Map.of(
                 "username", user.getUsername(),
@@ -129,16 +123,10 @@ public class UserService {
                     return new ResourceNotFoundException("Không tìm thấy người dùng");
                 });
 
-        MovieResponse movie;
-        try {
-            movie = movieClient.getMovieById(request.getMovieId());
-            if (movie == null) {
-                logger.warn("Không tìm thấy phim với ID: {}", request.getMovieId());
-                throw new ResourceNotFoundException("Không tìm thấy phim");
-            }
-        } catch (Exception e) {
-            logger.error("Lỗi khi gọi dịch vụ phim với movieId: {}", request.getMovieId(), e);
-            throw new ResourceNotFoundException("Lỗi khi kiểm tra phim: " + e.getMessage());
+        MovieResponse movie = movieClient.getMovieById(request.getMovieId());
+        if (movie == null) {
+            logger.warn("Không tìm thấy phim với ID: {}", request.getMovieId());
+            throw new ResourceNotFoundException("Không tìm thấy phim");
         }
 
         if (favoriteRepository.findByUserAndMovieId(user, request.getMovieId()).isPresent()) {
@@ -153,13 +141,8 @@ public class UserService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        try {
-            favoriteRepository.save(favorite);
-            logger.info("Đã thêm phim yêu thích cho người dùng: {}, movieId: {}", username, movie.getId());
-        } catch (DataIntegrityViolationException e) {
-            logger.error("Lỗi cơ sở dữ liệu khi lưu phim yêu thích với movieId: {}", movie.getId(), e);
-            throw new ResourceNotFoundException("Phim không hợp lệ hoặc không tồn tại trong cơ sở dữ liệu");
-        }
+        favoriteRepository.save(favorite);
+        logger.info("Đã thêm phim yêu thích cho người dùng: {}, movieId: {}", username, movie.getId());
 
         Map<String, Object> payload = Map.of(
                 "userId", user.getId(),
@@ -176,6 +159,11 @@ public class UserService {
         }
     }
 
+    /**
+     * Xóa phim yêu thích của người dùng.
+     * @param username Tên người dùng
+     * @param movieId ID của phim cần xóa
+     */
     public void removeFavorite(String username, Long movieId) {
         logger.debug("Xóa phim yêu thích cho người dùng: {}, movieId: {}", username, movieId);
 
@@ -191,13 +179,8 @@ public class UserService {
                     return new ResourceNotFoundException("Phim không có trong danh sách yêu thích");
                 });
 
-        try {
-            favoriteRepository.delete(favorite);
-            logger.info("Đã xóa phim yêu thích cho người dùng: {}, movieId: {}", username, movieId);
-        } catch (Exception e) {
-            logger.error("Lỗi khi xóa phim yêu thích với movieId: {}", movieId, e);
-            throw new RuntimeException("Lỗi khi xóa phim yêu thích: " + e.getMessage());
-        }
+        favoriteRepository.delete(favorite);
+        logger.info("Đã xóa phim yêu thích cho người dùng: {}, movieId: {}", username, movieId);
 
         Map<String, Object> payload = Map.of(
                 "userId", user.getId(),
@@ -227,12 +210,7 @@ public class UserService {
         logger.info("Đã lấy được {} phim yêu thích cho người dùng: {}", favorites.size(), username);
 
         return favorites.stream().map(favorite -> {
-            MovieResponse movie = null;
-            try {
-                movie = movieClient.getMovieById(favorite.getMovieId());
-            } catch (Exception e) {
-                logger.warn("Lỗi khi lấy thông tin phim với movieId: {}", favorite.getMovieId(), e);
-            }
+            MovieResponse movie = movieClient.getMovieById(favorite.getMovieId());
             Map<String, Object> favoriteMap = new HashMap<>();
             favoriteMap.put("movieId", favorite.getMovieId());
             favoriteMap.put("title", movie != null ? movie.getTitle() : "Không tìm thấy phim");
@@ -250,16 +228,10 @@ public class UserService {
                     return new ResourceNotFoundException("Không tìm thấy người dùng");
                 });
 
-        MovieResponse movie;
-        try {
-            movie = movieClient.getMovieById(movieId);
-            if (movie == null) {
-                logger.warn("Không tìm thấy phim với ID: {}", movieId);
-                throw new ResourceNotFoundException("Không tìm thấy phim");
-            }
-        } catch (Exception e) {
-            logger.error("Lỗi khi gọi dịch vụ phim với movieId: {}", movieId, e);
-            throw new ResourceNotFoundException("Lỗi khi kiểm tra phim: " + e.getMessage());
+        MovieResponse movie = movieClient.getMovieById(movieId);
+        if (movie == null) {
+            logger.warn("Không tìm thấy phim với ID: {}", movieId);
+            throw new ResourceNotFoundException("Không tìm thấy phim");
         }
 
         MovieView movieView = MovieView.builder()
@@ -268,13 +240,8 @@ public class UserService {
                 .viewedAt(LocalDateTime.now())
                 .build();
 
-        try {
-            movieViewRepository.save(movieView);
-            logger.info("Đã ghi lại lịch sử xem phim cho người dùng: {}, movieId: {}", username, movieId);
-        } catch (DataIntegrityViolationException e) {
-            logger.error("Lỗi cơ sở dữ liệu khi lưu lượt xem phim với movieId: {}", movieId, e);
-            throw new ResourceNotFoundException("Phim không hợp lệ hoặc không tồn tại trong cơ sở dữ liệu");
-        }
+        movieViewRepository.save(movieView);
+        logger.info("Đã ghi lại lịch sử xem phim cho người dùng: {}, movieId: {}", username, movieId);
 
         Map<String, Object> payload = Map.of(
                 "userId", user.getId(),
