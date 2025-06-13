@@ -21,6 +21,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -65,8 +66,13 @@ public class UserService {
                 .role(1)
                 .createdAt(LocalDateTime.now())
                 .build();
-        userRepository.save(user);
-        logger.info("Đăng ký người dùng thành công: {}", user.getUsername());
+        try {
+            userRepository.save(user);
+            logger.info("Đăng ký người dùng thành công: {}", user.getUsername());
+        } catch (DataIntegrityViolationException e) {
+            logger.error("Lỗi cơ sở dữ liệu khi đăng ký người dùng: {}", request.getUsername(), e);
+            throw new RuntimeException("Lỗi cơ sở dữ liệu khi đăng ký");
+        }
 
         Map<String, Object> payload = Map.of(
                 "username", user.getUsername(),
@@ -109,7 +115,6 @@ public class UserService {
             role = "USER";
         }
 
-        // Truyền cả username và role vào generateToken
         String token = jwtProvider.generateToken(user.getUsername(), role);
         logger.info("Đăng nhập thành công cho người dùng: {}, vai trò: {}", user.getUsername(), role);
         return new JwtResponse(role, token);
@@ -124,10 +129,16 @@ public class UserService {
                     return new ResourceNotFoundException("Không tìm thấy người dùng");
                 });
 
-        MovieResponse movie = movieClient.getMovieById(request.getMovieId());
-        if (movie == null) {
-            logger.warn("Không tìm thấy phim với ID: {}", request.getMovieId());
-            throw new ResourceNotFoundException("Không tìm thấy phim");
+        MovieResponse movie;
+        try {
+            movie = movieClient.getMovieById(request.getMovieId());
+            if (movie == null) {
+                logger.warn("Không tìm thấy phim với ID: {}", request.getMovieId());
+                throw new ResourceNotFoundException("Không tìm thấy phim");
+            }
+        } catch (Exception e) {
+            logger.error("Lỗi khi gọi dịch vụ phim với movieId: {}", request.getMovieId(), e);
+            throw new ResourceNotFoundException("Lỗi khi kiểm tra phim: " + e.getMessage());
         }
 
         if (favoriteRepository.findByUserAndMovieId(user, request.getMovieId()).isPresent()) {
@@ -136,14 +147,19 @@ public class UserService {
         }
 
         Favorite favorite = Favorite.builder()
-                .userId(user.getId()) // Thiết lập userId
-                .user(user) // Thiết lập user để duy trì mối quan hệ
+                .userId(user.getId())
+                .user(user)
                 .movieId(movie.getId())
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        favoriteRepository.save(favorite);
-        logger.info("Đã thêm phim yêu thích cho người dùng: {}, movieId: {}", username, movie.getId());
+        try {
+            favoriteRepository.save(favorite);
+            logger.info("Đã thêm phim yêu thích cho người dùng: {}, movieId: {}", username, movie.getId());
+        } catch (DataIntegrityViolationException e) {
+            logger.error("Lỗi cơ sở dữ liệu khi lưu phim yêu thích với movieId: {}", movie.getId(), e);
+            throw new ResourceNotFoundException("Phim không hợp lệ hoặc không tồn tại trong cơ sở dữ liệu");
+        }
 
         Map<String, Object> payload = Map.of(
                 "userId", user.getId(),
@@ -160,6 +176,44 @@ public class UserService {
         }
     }
 
+    public void removeFavorite(String username, Long movieId) {
+        logger.debug("Xóa phim yêu thích cho người dùng: {}, movieId: {}", username, movieId);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Không tìm thấy người dùng");
+                });
+
+        Favorite favorite = favoriteRepository.findByUserAndMovieId(user, movieId)
+                .orElseThrow(() -> {
+                    logger.warn("Phim với ID {} không có trong danh sách yêu thích của người dùng: {}", movieId, username);
+                    return new ResourceNotFoundException("Phim không có trong danh sách yêu thích");
+                });
+
+        try {
+            favoriteRepository.delete(favorite);
+            logger.info("Đã xóa phim yêu thích cho người dùng: {}, movieId: {}", username, movieId);
+        } catch (Exception e) {
+            logger.error("Lỗi khi xóa phim yêu thích với movieId: {}", movieId, e);
+            throw new RuntimeException("Lỗi khi xóa phim yêu thích: " + e.getMessage());
+        }
+
+        Map<String, Object> payload = Map.of(
+                "userId", user.getId(),
+                "movieId", movieId
+        );
+        KafkaMessage kafkaMessage = new KafkaMessage("favorite", "REMOVE", user.getId(), payload);
+
+        try {
+            String messageJson = objectMapper.writeValueAsString(kafkaMessage);
+            kafkaProducerService.sendMessage("favorite-events", messageJson);
+            logger.debug("Đã gửi tin nhắn Kafka cho sự kiện xóa yêu thích: {}", messageJson);
+        } catch (Exception e) {
+            logger.error("Lỗi khi gửi tin nhắn Kafka cho sự kiện xóa yêu thích: user={}, movieId={}", username, movieId, e);
+        }
+    }
+
     public List<Map<String, Object>> getFavorites(String username) {
         logger.debug("Lấy danh sách phim yêu thích cho người dùng: {}", username);
 
@@ -173,7 +227,12 @@ public class UserService {
         logger.info("Đã lấy được {} phim yêu thích cho người dùng: {}", favorites.size(), username);
 
         return favorites.stream().map(favorite -> {
-            MovieResponse movie = movieClient.getMovieById(favorite.getMovieId());
+            MovieResponse movie = null;
+            try {
+                movie = movieClient.getMovieById(favorite.getMovieId());
+            } catch (Exception e) {
+                logger.warn("Lỗi khi lấy thông tin phim với movieId: {}", favorite.getMovieId(), e);
+            }
             Map<String, Object> favoriteMap = new HashMap<>();
             favoriteMap.put("movieId", favorite.getMovieId());
             favoriteMap.put("title", movie != null ? movie.getTitle() : "Không tìm thấy phim");
@@ -191,10 +250,16 @@ public class UserService {
                     return new ResourceNotFoundException("Không tìm thấy người dùng");
                 });
 
-        MovieResponse movie = movieClient.getMovieById(movieId);
-        if (movie == null) {
-            logger.warn("Không tìm thấy phim với ID: {}", movieId);
-            throw new ResourceNotFoundException("Không tìm thấy phim");
+        MovieResponse movie;
+        try {
+            movie = movieClient.getMovieById(movieId);
+            if (movie == null) {
+                logger.warn("Không tìm thấy phim với ID: {}", movieId);
+                throw new ResourceNotFoundException("Không tìm thấy phim");
+            }
+        } catch (Exception e) {
+            logger.error("Lỗi khi gọi dịch vụ phim với movieId: {}", movieId, e);
+            throw new ResourceNotFoundException("Lỗi khi kiểm tra phim: " + e.getMessage());
         }
 
         MovieView movieView = MovieView.builder()
@@ -203,8 +268,13 @@ public class UserService {
                 .viewedAt(LocalDateTime.now())
                 .build();
 
-        movieViewRepository.save(movieView);
-        logger.info("Đã ghi lại lịch sử xem phim cho người dùng: {}, movieId: {}", username, movieId);
+        try {
+            movieViewRepository.save(movieView);
+            logger.info("Đã ghi lại lịch sử xem phim cho người dùng: {}, movieId: {}", username, movieId);
+        } catch (DataIntegrityViolationException e) {
+            logger.error("Lỗi cơ sở dữ liệu khi lưu lượt xem phim với movieId: {}", movieId, e);
+            throw new ResourceNotFoundException("Phim không hợp lệ hoặc không tồn tại trong cơ sở dữ liệu");
+        }
 
         Map<String, Object> payload = Map.of(
                 "userId", user.getId(),

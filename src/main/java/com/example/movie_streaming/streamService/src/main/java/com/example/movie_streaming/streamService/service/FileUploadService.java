@@ -90,7 +90,7 @@ public class FileUploadService {
         // Gửi Kafka message để consumer xử lý xóa cả GCS và database
         sendKafkaMessage("DELETE", fileId, fileName, fileUrl, null);
 
-        logger.info("Sent DELETE request for fileId: {} to Kafka", fileId);
+        logger.info("Sent DELETE request for fileId: {} to Kafka. FileName: {}, FileUrl: {}", fileId, fileName, fileUrl);
     }
 
     /**
@@ -207,6 +207,7 @@ public class FileUploadService {
         KafkaMessage kafkaMessage = new KafkaMessage("file-upload", action, null, payload);
         try {
             String messageJson = objectMapper.writeValueAsString(kafkaMessage);
+            logger.debug("Sending Kafka message: action={}, payload={}", action, messageJson); // Thêm log debug
             kafkaProducerService.sendMessage("file-uploaded-topic", messageJson);
         } catch (Exception e) {
             logger.error("Failed to send Kafka message for action {}: {}", action, e.getMessage());

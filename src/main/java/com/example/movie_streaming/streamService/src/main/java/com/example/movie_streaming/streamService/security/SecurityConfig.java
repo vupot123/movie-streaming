@@ -28,10 +28,11 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Bảo vệ tất cả các endpoint của streamService yêu cầu vai trò ADMIN
+                        // Bảo vệ các endpoint của streamService yêu cầu vai trò ADMIN
                         .requestMatchers(HttpMethod.POST, "/upload/file").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/upload/file").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/upload/files").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/upload/files/search").hasRole("ADMIN") // Thêm dòng này
                         // Từ chối tất cả các yêu cầu khác không khớp
                         .anyRequest().denyAll()
                 )

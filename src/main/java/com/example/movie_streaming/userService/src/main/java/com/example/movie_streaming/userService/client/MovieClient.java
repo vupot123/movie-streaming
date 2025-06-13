@@ -17,7 +17,7 @@ public class MovieClient {
     private final RestTemplate restTemplate;
 
     public MovieResponse getMovieById(Long movieId) {
-        String url = "http://movie-service:8082/api/movies/" + movieId;
+        String url = "https://movie-streaming-movie-service-319946458144.asia-southeast1.run.app/api/movies/" + movieId;
         try {
             String rawJson = restTemplate.getForObject(url, String.class);
             ObjectMapper mapper = new ObjectMapper();

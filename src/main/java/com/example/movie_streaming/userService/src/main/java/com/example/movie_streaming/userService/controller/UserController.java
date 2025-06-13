@@ -89,6 +89,26 @@ public class UserController {
         }
     }
 
+    @DeleteMapping("/favorites/{movieId}")
+    public ResponseEntity<ApiResponse<String>> removeFavorite(HttpServletRequest request, @PathVariable Long movieId) {
+        try {
+            logger.debug("Yêu cầu xóa phim yêu thích với movieId: {}", movieId);
+            String username = extractUsernameFromRequest(request);
+            userService.removeFavorite(username, movieId);
+            logger.info("Xóa phim yêu thích thành công cho username: {}, movieId: {}", username, movieId);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Xóa phim yêu thích thành công", null));
+        } catch (InvalidCredentialsException e) {
+            logger.warn("Lỗi xóa phim yêu thích: {}", e.getMessage());
+            return ResponseEntity.status(401).body(new ApiResponse<>(401, e.getMessage(), null));
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Lỗi xóa phim yêu thích: {}", e.getMessage());
+            return ResponseEntity.status(404).body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Lỗi không xác định khi xóa phim yêu thích với movieId: {}", movieId, e);
+            return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
+        }
+    }
+
     @GetMapping("/favorites")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getFavorites(HttpServletRequest request) {
         try {

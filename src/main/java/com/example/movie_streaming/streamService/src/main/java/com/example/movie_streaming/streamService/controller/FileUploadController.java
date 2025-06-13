@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -48,4 +49,53 @@ public class FileUploadController {
             return ResponseEntity.badRequest().body(null);
         }
     }
+
+
+    @GetMapping("/files/search")
+    public ResponseEntity<List<SingleMovieStream>> searchFiles(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "type", required = false) String type) {
+        try {
+            List<SingleMovieStream> streams = fileUploadService.searchFileStreams(keyword);
+
+            // Lọc theo loại file nếu type được cung cấp
+            if (type != null && !type.trim().isEmpty()) {
+                streams = filterByFileType(streams, type.trim().toLowerCase());
+                if (streams.isEmpty()) {
+                    logger.info("No streams found for type: {}", type);
+                }
+            }
+
+            return ResponseEntity.ok(streams);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tìm kiếm: " + e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    /**
+     * Lọc danh sách SingleMovieStream theo loại file (ảnh hoặc video).
+     * @param streams Danh sách chưa lọc
+     * @param type Loại file (images hoặc videos)
+     * @return Danh sách đã lọc
+     */
+    private List<SingleMovieStream> filterByFileType(List<SingleMovieStream> streams, String type) {
+        List<SingleMovieStream> filteredStreams = new ArrayList<>();
+        for (SingleMovieStream stream : streams) {
+            String fileName = stream.getFileName().toLowerCase();
+            if ("images".equals(type)) {
+                if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg") || fileName.endsWith(".png") || fileName.endsWith(".gif")) {
+                    filteredStreams.add(stream);
+                }
+            } else if ("videos".equals(type)) {
+                if (fileName.endsWith(".mp4") || fileName.endsWith(".avi") || fileName.endsWith(".mov") || fileName.endsWith(".mkv")) {
+                    filteredStreams.add(stream);
+                }
+            }
+        }
+        return filteredStreams;
+    }
+
+    // Thêm logger để debug (nếu cần)
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FileUploadController.class);
 }
