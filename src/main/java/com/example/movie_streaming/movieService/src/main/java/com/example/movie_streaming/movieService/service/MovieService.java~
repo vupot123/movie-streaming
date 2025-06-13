@@ -16,6 +16,7 @@ import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,9 +41,22 @@ public class MovieService {
     public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
         int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() - 1 : 0;
         int size = request.getSize() != null && request.getSize() > 0 ? request.getSize() : 20;
-        Pageable pageable = PageRequest.of(page, size);
-        return movieRepository.findAll(new MovieSpecification(request), pageable).map(movieMapper::toResponse);
+
+        Sort sort = Sort.unsorted();
+        if (request.getSort() != null) {
+            switch (request.getSort().toLowerCase()) {
+                case "views" -> sort = Sort.by(Sort.Direction.DESC, "views");
+                case "release_date", "year" -> sort = Sort.by(Sort.Direction.DESC, "year");
+                case "title" -> sort = Sort.by(Sort.Direction.ASC, "title");
+                default -> sort = Sort.by(Sort.Direction.DESC, "id");
+            }
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+        return movieRepository.findAll(new MovieSpecification(request), pageable)
+                .map(movieMapper::toResponse);
     }
+
 
     @Transactional(readOnly = true)
     public List<MovieResponse> getAllMovies() {
@@ -138,8 +152,8 @@ public class MovieService {
 
         // Tạo diễn viên mới nếu có
         List<Long> newActorIds = new ArrayList<>();
-        if (request instanceof CreateMovieRequest createRequest && createRequest.getNewActors() != null) {
-            List<Actor> newActors = createRequest.getNewActors().stream()
+        if (request.getNewActors() != null && !request.getNewActors().isEmpty()) {
+            List<Actor> newActors = request.getNewActors().stream()
                     .map(movieMapper::toActorEntity)
                     .toList();
             actorRepository.saveAll(newActors);
@@ -154,9 +168,10 @@ public class MovieService {
             allActorIds.addAll(request.getActorIds().stream().filter(Objects::nonNull).collect(Collectors.toSet()));
         }
 
-        // Xóa quan hệ cũ và cập nhật lại các quan hệ
+        // Xóa quan hệ cũ
         deleteMovieRelations(id);
 
+        // Lưu quan hệ mới
         saveMovieRelations(movie,
                 new ArrayList<>(allActorIds),
                 request.getGenreIds(),
@@ -165,6 +180,7 @@ public class MovieService {
                 request.getLargeBanner()
         );
 
+        // Cập nhật thông tin movie
         boolean updated = updateMovieFields(movie, request);
 
         Movie updatedMovie = movieRepository.save(movie);
@@ -173,7 +189,6 @@ public class MovieService {
 
         return movieMapper.toResponse(updatedMovie);
     }
-
 
     @Transactional
     public void deleteMovie(Long id) {

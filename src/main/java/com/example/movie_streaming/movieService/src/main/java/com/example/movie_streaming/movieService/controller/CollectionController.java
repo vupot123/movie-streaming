@@ -3,11 +3,11 @@ package com.example.movie_streaming.movieService.controller;
 import com.example.movie_streaming.common.response.ApiResponse;
 import com.example.movie_streaming.movieService.model.dto.request.CreateCollectionRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateCollectionRequest;
+import com.example.movie_streaming.movieService.model.dto.request.UpdateFeaturedCollectionRequest;
 import com.example.movie_streaming.movieService.model.dto.response.CollectionResponse;
 import com.example.movie_streaming.movieService.service.CollectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -74,4 +74,11 @@ public class CollectionController {
         return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched non-featured successfully", collections));
     }
 
+    @PutMapping("/{id}/featured")
+    public ResponseEntity<ApiResponse<CollectionResponse>> updateFeatured(
+            @PathVariable("id") Long id,
+            @RequestBody UpdateFeaturedCollectionRequest request) {
+        CollectionResponse response = collectionService.updateFeaturedCollection(id, request);
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection featured status updated", response));
+    }
 }

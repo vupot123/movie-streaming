@@ -4,9 +4,8 @@ import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
 import com.example.movie_streaming.movieService.kafka.KafkaMessage;
 import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
 import com.example.movie_streaming.movieService.model.dto.request.CreateCollectionRequest;
-import com.example.movie_streaming.movieService.model.dto.request.UpdateCollectionRequest;
+import com.example.movie_streaming.movieService.model.dto.request.UpdateFeaturedCollectionRequest;
 import com.example.movie_streaming.movieService.model.dto.response.CollectionResponse;
-import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.movieService.model.entity.*;
 import com.example.movie_streaming.movieService.model.entity.Collection;
 import com.example.movie_streaming.movieService.repository.CollectionMovieRepository;
@@ -66,20 +65,25 @@ public class CollectionService {
     }
 
     @Transactional
-    public CollectionResponse updateCollection(Long id, UpdateCollectionRequest request) {
+    public CollectionResponse updateFeaturedCollection(Long id, UpdateFeaturedCollectionRequest request) {
         Collection collection = collectionRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Not found collection"));
 
-        collection.setName(request.getName());
-        collection.setFeatured(Boolean.TRUE.equals(request.getFeatured()));
+        if (request.getFeatured() != null) {
+            collection.setFeatured(request.getFeatured());
+        }
 
         Collection updated = collectionRepo.save(collection);
 
-        Map<String, Object> payload = Map.of("collectionId", updated.getId());
-        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("collection", "UPDATE", updated.getId(), payload));
+        Map<String, Object> payload = Map.of(
+                "collectionId", updated.getId(),
+                "featured", updated.getFeatured()
+        );
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("collection", "UPDATE_FEATURED", updated.getId(), payload));
 
         return toResponse(updated);
     }
+
 
     public List<CollectionResponse> getFeaturedCollections() {
         return collectionRepo.findByFeaturedTrue().stream()
@@ -143,14 +147,11 @@ public class CollectionService {
                 .map(m -> m.getMovie().getId())
                 .toList();
 
-        List<Movie> movies = movieRepo.findAllByIdIn(new HashSet<>(movieIds));
-
-
         return CollectionResponse.builder()
                 .id(collection.getId())
                 .name(collection.getName())
                 .featured(collection.getFeatured())
-                .movieIDs(movieIDs)
+                .movieIDs(movieIds)
                 .build();
     }
 }

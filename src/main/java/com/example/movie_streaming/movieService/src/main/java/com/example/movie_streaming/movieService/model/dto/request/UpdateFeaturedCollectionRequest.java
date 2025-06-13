@@ -4,8 +4,8 @@ package com.example.movie_streaming.movieService.model.dto.request;
 import lombok.Data;
 
 @Data
-public class UpdateCollectionRequest {
-    private String name;
+public class UpdateFeaturedCollectionRequest {
+    private Long id;
     private Boolean featured;
 }
 
