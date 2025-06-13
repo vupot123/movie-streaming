@@ -125,7 +125,7 @@ public class UserService {
 
         MovieResponse movie = movieClient.getMovieById(request.getMovieId());
         if (movie == null) {
-            logger.warn("Không tìm thấy phim với ID: {}", request.getMovieId());
+            logger.warn("Không tìm thấy phim với ID: {} từ movie-service", request.getMovieId());
             throw new ResourceNotFoundException("Không tìm thấy phim");
         }
 
@@ -159,11 +159,6 @@ public class UserService {
         }
     }
 
-    /**
-     * Xóa phim yêu thích của người dùng.
-     * @param username Tên người dùng
-     * @param movieId ID của phim cần xóa
-     */
     public void removeFavorite(String username, Long movieId) {
         logger.debug("Xóa phim yêu thích cho người dùng: {}, movieId: {}", username, movieId);
 
@@ -207,13 +202,22 @@ public class UserService {
                 });
 
         List<Favorite> favorites = favoriteRepository.findByUser(user);
-        logger.info("Đã lấy được {} phim yêu thích cho người dùng: {}", favorites.size(), username);
+        logger.info("Đã lấy được {} phim yêu thích cho người dùng: {} từ database", favorites.size(), username);
+
+        if (favorites.isEmpty()) {
+            logger.warn("Không có phim yêu thích nào cho người dùng: {}", username);
+            return List.of(); // Trả về danh sách rỗng thay vì null
+        }
 
         return favorites.stream().map(favorite -> {
-            MovieResponse movie = movieClient.getMovieById(favorite.getMovieId());
+            Long movieId = favorite.getMovieId();
+            MovieResponse movie = movieClient.getMovieById(movieId);
+            if (movie == null) {
+                logger.warn("Không tìm thấy thông tin phim cho movieId: {} từ movie-service", movieId);
+            }
             Map<String, Object> favoriteMap = new HashMap<>();
-            favoriteMap.put("movieId", favorite.getMovieId());
-            favoriteMap.put("title", movie != null ? movie.getTitle() : "Không tìm thấy phim");
+            favoriteMap.put("movieId", movieId);
+            favoriteMap.put("title", (movie != null) ? movie.getTitle() : "Không tìm thấy phim");
             favoriteMap.put("createdAt", favorite.getCreatedAt());
             return favoriteMap;
         }).collect(Collectors.toList());
@@ -230,7 +234,7 @@ public class UserService {
 
         MovieResponse movie = movieClient.getMovieById(movieId);
         if (movie == null) {
-            logger.warn("Không tìm thấy phim với ID: {}", movieId);
+            logger.warn("Không tìm thấy phim với ID: {} từ movie-service", movieId);
             throw new ResourceNotFoundException("Không tìm thấy phim");
         }
 
