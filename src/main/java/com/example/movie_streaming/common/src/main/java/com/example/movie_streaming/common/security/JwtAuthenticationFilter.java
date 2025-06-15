@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,6 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +42,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
 
         // Bỏ qua kiểm tra token cho các endpoint không cần xác thực
-        if (EXCLUDED_PATHS.contains(path) || isPublicEndpoint(request)) {
+        if (EXCLUDED_PATHS.contains(path) || isPublicEndpoint(request) || "OPTIONS".equals(request.getMethod())) {
+            // Xử lý CORS pre-flight
+            if ("OPTIONS".equals(request.getMethod())) {
+                response.setStatus(HttpStatus.OK.value()); // Sử dụng HttpStatus.OK
+                response.setHeader("Access-Control-Allow-Origin", request.getHeader("Origin"));
+                response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD");
+                response.setHeader("Access-Control-Allow-Headers", "*");
+                response.setHeader("Access-Control-Max-Age", "3600");
+                return;
+            }
             filterChain.doFilter(request, response);
             return;
         }
@@ -86,14 +97,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         );
     }
 
-    // Gửi response lỗi
+    // Gửi response lỗi với kiểm tra null
     private void sendErrorResponse(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        new ObjectMapper().writeValue(response.getOutputStream(), Map.of(
-                "status", status,
-                "message", message,
-                "data", null
-        ));
+        Map<String, Object> error = new HashMap<>();
+        error.put("status", status);
+        error.put("message", message != null ? message : "Internal server error");
+        error.put("data", null);
+        response.setHeader("Access-Control-Allow-Origin", "*"); // Thêm header CORS cho response lỗi
+        new ObjectMapper().writeValue(response.getOutputStream(), error);
     }
 }

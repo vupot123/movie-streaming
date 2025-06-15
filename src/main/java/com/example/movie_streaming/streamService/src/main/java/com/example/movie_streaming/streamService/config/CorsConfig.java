@@ -1,25 +1,35 @@
-package com.example.movie_streaming.userService.config;
+package com.example.movie_streaming.streamService.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+
+import java.util.List;
 
 @Configuration
 public class CorsConfig {
 
     @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // Áp dụng cho tất cả các endpoint
-                        .allowedOrigins("*") // Cho phép tất cả các origin (các domain/cổng)
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Cho phép tất cả các phương thức HTTP
-                        .allowedHeaders("*") // Cho phép tất cả các header
-                        .allowCredentials(true) // Cho phép gửi cookie hoặc thông tin xác thực nếu cần
-                        .maxAge(3600); // Thời gian cache pre-flight request (tính bằng giây)
-            }
-        };
+    public CorsFilter corsFilter() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:5183",
+                "http://127.0.0.1:5500",
+                "https://movie-streaming-stream-service-319946458144.asia-southeast1.run.app"
+        ));
+
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true); // Quan trọng: bật credentials
+        config.setMaxAge(3600L);
+
+        source.registerCorsConfiguration("/**", config);
+
+        return new CorsFilter(source);
     }
 }

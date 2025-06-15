@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/upload")
+@RequestMapping("/api/upload")
 public class FileUploadController {
 
     @Autowired
