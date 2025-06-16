@@ -4,6 +4,7 @@ import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
 import com.example.movie_streaming.movieService.kafka.KafkaMessage;
 import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
 import com.example.movie_streaming.movieService.model.dto.request.CreateCollectionRequest;
+import com.example.movie_streaming.movieService.model.dto.request.UpdateCollectionRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateFeaturedCollectionRequest;
 import com.example.movie_streaming.movieService.model.dto.response.CollectionResponse;
 import com.example.movie_streaming.movieService.model.entity.*;
@@ -35,6 +36,17 @@ public class CollectionService {
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<CollectionResponse> searchByName(String keyword) {
+        if (keyword == null || keyword.trim().isBlank()) {
+            throw new IllegalArgumentException("Search keyword cannot be empty");
+        }
+
+        List<Collection> collections = collectionRepo.findByNameContainingIgnoreCase(keyword.trim());
+        return collections.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
 
     @Transactional
     public CollectionResponse createCollection(CreateCollectionRequest request) {
@@ -80,6 +92,47 @@ public class CollectionService {
                 "featured", updated.getFeatured()
         );
         kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("collection", "UPDATE_FEATURED", updated.getId(), payload));
+
+        return toResponse(updated);
+    }
+
+    @Transactional
+    public CollectionResponse updateCollection(Long id, UpdateCollectionRequest request) {
+        Collection collection = collectionRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Not found collection"));
+
+        // Cập nhật thông tin cơ bản
+        if (request.getName() != null && !request.getName().isBlank()) {
+            collection.setName(request.getName().trim());
+        }
+
+        if (request.getFeatured() != null) {
+            collection.setFeatured(request.getFeatured());
+        }
+
+        Collection updated = collectionRepo.save(collection);
+
+        // Cập nhật danh sách phim
+        if (request.getMovieIds() != null) {
+            collectionMovieRepo.deleteByCollectionId(id); // Xoá hết phim cũ
+
+            for (Long movieId : request.getMovieIds()) {
+                Movie movie = movieRepo.findById(movieId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Not found movie ID: " + movieId));
+
+                CollectionMovie relation = new CollectionMovie(
+                        new CollectionMovieId(updated.getId(), movie.getId()), updated, movie
+                );
+                collectionMovieRepo.save(relation);
+            }
+        }
+
+        // Kafka message
+        Map<String, Object> payload = Map.of(
+                "collectionId", updated.getId(),
+                "movieIds", request.getMovieIds() != null ? request.getMovieIds() : Collections.emptyList()
+        );
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("collection", "UPDATE", updated.getId(), payload));
 
         return toResponse(updated);
     }
@@ -139,6 +192,7 @@ public class CollectionService {
             kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("collection", "REMOVE_MOVIE", null, payload));
         }
     }
+
 
     private CollectionResponse toResponse(Collection collection) {
         List<CollectionMovie> collectionMovies = collectionMovieRepo.findAllByCollectionId(collection.getId());

@@ -85,7 +85,7 @@ public class CollectionController {
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<CollectionResponse>>> searchByName(@RequestParam("keyword") String keyword) {
         List<CollectionResponse> results = collectionService.searchByName(keyword);
-        return ResponseEntity.ok(ApiResponse.success(200, "Collection searched successfully", results));
+        return ResponseEntity.ok(ApiResponse.success(200, "Tìm kiếm bộ sưu tập thành công", results));
     }
 
 }

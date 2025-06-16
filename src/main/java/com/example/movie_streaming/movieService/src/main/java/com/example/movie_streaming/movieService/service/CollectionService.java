@@ -31,11 +31,23 @@ public class CollectionService {
     private final MovieMapper movieMapper;
     private final KafkaProducerService kafkaProducerService;
 
+    @Transactional(readOnly = true)
     public List<CollectionResponse> getAllCollections() {
         return collectionRepo.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<CollectionResponse> searchByName(String keyword) {
+        if (keyword == null || keyword.trim().isBlank()) {
+            throw new IllegalArgumentException("Search keyword cannot be empty");
+        }
+
+        List<Collection> collections = collectionRepo.findByNameContainingIgnoreCase(keyword.trim());
+        return collections.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
 
     @Transactional
     public CollectionResponse createCollection(CreateCollectionRequest request) {
@@ -181,6 +193,7 @@ public class CollectionService {
             kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("collection", "REMOVE_MOVIE", null, payload));
         }
     }
+
 
     private CollectionResponse toResponse(Collection collection) {
         List<CollectionMovie> collectionMovies = collectionMovieRepo.findAllByCollectionId(collection.getId());

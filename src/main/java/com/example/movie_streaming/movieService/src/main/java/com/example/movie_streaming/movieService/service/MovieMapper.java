@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MovieMapper {
 
+    private final ActorMapper actorMapper;
     public MovieResponse toResponse(Movie movie) {
         return MovieResponse.builder()
                 .id(movie.getId())
@@ -56,17 +57,7 @@ public class MovieMapper {
     private Set<ActorResponse> mapActors(Set<MovieActor> movieActors) {
         if (movieActors == null) return Set.of();
         return movieActors.stream()
-                .map(ma -> {
-                    Actor actor = ma.getActor();
-                    return new ActorResponse(
-                            actor.getId(),
-                            actor.getName(),
-                            actor.getGender() != null ? actor.getGender().name() : null,
-                            actor.getDob(),
-                            actor.getAvatarUrl(),
-                            actor.getBio()
-                    );
-                })
+                .map(ma -> actorMapper.toResponse(ma.getActor()))
                 .collect(Collectors.toSet());
     }
 

@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MovieMapper {
 
+    private final ActorMapper actorMapper;
     public MovieResponse toResponse(Movie movie) {
         return MovieResponse.builder()
                 .id(movie.getId())
@@ -58,13 +59,21 @@ public class MovieMapper {
         return movieActors.stream()
                 .map(ma -> {
                     Actor actor = ma.getActor();
+                    List<Long> movieIds = actor.getMovieActors() != null
+                            ? actor.getMovieActors().stream()
+                            .map(m -> m.getMovie().getId())
+                            .distinct()
+                            .toList()
+                            : List.of();
+
                     return new ActorResponse(
                             actor.getId(),
                             actor.getName(),
                             actor.getGender() != null ? actor.getGender().name() : null,
                             actor.getDob(),
                             actor.getAvatarUrl(),
-                            actor.getBio()
+                            actor.getBio(),
+                            movieIds
                     );
                 })
                 .collect(Collectors.toSet());
@@ -109,7 +118,7 @@ public class MovieMapper {
         Gender gender = null;
         if (request.getGender() != null) {
             try {
-                gender = Gender.valueOf(request.getGender().toUpperCase());
+                gender = Gender.valueOf(request.getGender().trim().toUpperCase());
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Giới tính không hợp lệ: " + request.getGender());
             }
@@ -123,5 +132,4 @@ public class MovieMapper {
                 .bio(request.getBio())
                 .build();
     }
-
 }

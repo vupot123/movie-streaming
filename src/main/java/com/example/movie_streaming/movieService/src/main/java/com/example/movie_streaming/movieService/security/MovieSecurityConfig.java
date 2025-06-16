@@ -44,6 +44,12 @@ public class MovieSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/movies/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/movies/filter").permitAll()
 
+                        // === ACTORS ===
+                        .requestMatchers(HttpMethod.GET, "/api/actors", "/api/actors/{id}", "/api/actors/search").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/actors").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/actors/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/actors/**").hasRole("ADMIN")
+
                         // Authenticated for view tracking (specify clearly, avoid /**/views)
                         .requestMatchers(HttpMethod.POST, "/api/movies/{id}/views", "/api/movies/views").hasAnyRole("USER", "ADMIN")
 

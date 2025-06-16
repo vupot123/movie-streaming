@@ -1,0 +1,50 @@
+package com.example.movie_streaming.movieService.controller;
+
+import com.example.movie_streaming.common.response.ApiResponse;
+import com.example.movie_streaming.movieService.model.dto.request.ActorRequest;
+import com.example.movie_streaming.movieService.model.dto.response.ActorResponse;
+import com.example.movie_streaming.movieService.service.ActorService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/actors")
+@RequiredArgsConstructor
+public class ActorController {
+
+    private final ActorService actorService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ActorResponse>>> getAll() {
+        return ResponseEntity.ok(ApiResponse.success(200, "Actors fetched successfully", actorService.getAllActors()));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ActorResponse>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(200, "Actor fetched successfully", actorService.getById(id)));
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<ActorResponse>> create(@RequestBody ActorRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(200, "Actor created successfully", actorService.create(request)));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ActorResponse>> update(@PathVariable Long id, @RequestBody ActorRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(200, "Actor updated successfully", actorService.update(id, request)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        actorService.delete(id);
+        return ResponseEntity.ok(ApiResponse.success(200, "Actor deleted successfully", null));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<ActorResponse>>> search(@RequestParam String keyword) {
+        return ResponseEntity.ok(ApiResponse.success(200, "Actor searched successfully", actorService.search(keyword)));
+    }
+}

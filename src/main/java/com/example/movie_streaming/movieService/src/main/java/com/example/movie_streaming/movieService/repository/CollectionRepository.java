@@ -8,4 +8,5 @@ import java.util.List;
 public interface CollectionRepository extends JpaRepository<Collection, Long> {
     List<Collection> findByFeaturedTrue();
     List<Collection> findByFeaturedFalse();
+    List<Collection> findByNameContainingIgnoreCase(String keyword);
 }
