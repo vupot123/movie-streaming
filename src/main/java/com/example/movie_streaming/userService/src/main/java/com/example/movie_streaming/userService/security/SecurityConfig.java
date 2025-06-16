@@ -50,19 +50,13 @@ public class SecurityConfig {
 
         return http.build();
     }
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:5183",
-                "http://127.0.0.1:5500",
-                "https://movie-streaming-stream-service-319946458144.asia-southeast1.run.app"
-        ));
+        configuration.addAllowedOriginPattern("*"); // Cho phép tất cả origin với pattern
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true); // Quan trọng cho credentials: "include"
+        configuration.setAllowCredentials(true); // Hỗ trợ gửi token
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

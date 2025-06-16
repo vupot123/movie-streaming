@@ -2,7 +2,11 @@ package com.example.movie_streaming.streamService.controller;
 
 import com.example.movie_streaming.streamService.model.entity.SingleMovieStream;
 import com.example.movie_streaming.streamService.service.FileUploadService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,16 +18,27 @@ import java.util.List;
 @RequestMapping("/api/upload")
 public class FileUploadController {
 
-    @Autowired
-    private FileUploadService fileUploadService;
+    private static final Logger logger = LoggerFactory.getLogger(FileUploadController.class);
+
+    private final FileUploadService fileUploadService;
+
+    public FileUploadController(FileUploadService fileUploadService) {
+        this.fileUploadService = fileUploadService; // Constructor injection thay cho @Autowired
+    }
 
     @PostMapping("/file")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
+            logger.debug("Yêu cầu upload file: {}", file.getOriginalFilename());
+            if (file.isEmpty()) {
+                logger.warn("File upload rỗng");
+                return ResponseEntity.badRequest().body("File không được để trống");
+            }
             String fileUrl = fileUploadService.uploadFileToCloud(file);
+            logger.info("Tệp {} đã được tải lên thành công. URL: {}", file.getOriginalFilename(), fileUrl);
             return ResponseEntity.ok("Tệp đã được tải lên thành công. URL tệp: " + fileUrl);
         } catch (Exception e) {
-            System.err.println("Lỗi: " + e.getMessage());
+            logger.error("Lỗi khi upload file: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body("Lỗi khi tải tệp: " + e.getMessage());
         }
     }
@@ -31,54 +46,57 @@ public class FileUploadController {
     @DeleteMapping("/file")
     public ResponseEntity<String> deleteFile(@RequestParam("fileId") Long fileId) {
         try {
+            logger.debug("Yêu cầu xóa file với fileId: {}", fileId);
             fileUploadService.deleteFile(fileId);
+            logger.info("Tệp với fileId {} đã được xóa thành công", fileId);
             return ResponseEntity.ok("Tệp đã được xóa thành công cho fileId: " + fileId);
         } catch (Exception e) {
-            System.err.println("Lỗi: " + e.getMessage());
+            logger.error("Lỗi khi xóa file với fileId {}: {}", fileId, e.getMessage(), e);
             return ResponseEntity.badRequest().body("Lỗi khi xóa tệp: " + e.getMessage());
         }
     }
 
     @GetMapping("/files")
-    public ResponseEntity<List<SingleMovieStream>> getAllFileUrls() {
+    public ResponseEntity<Page<SingleMovieStream>> getAllFileUrls(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            List<SingleMovieStream> streams = fileUploadService.getAllFileStreams();
+            logger.debug("Yêu cầu lấy tất cả file urls với page: {}, size: {}", page, size);
+            Page<SingleMovieStream> streams = fileUploadService.getAllFileStreams(page, size);
+            logger.info("Đã lấy được {} file streams", streams.getTotalElements());
             return ResponseEntity.ok(streams);
         } catch (Exception e) {
-            System.err.println("Lỗi: " + e.getMessage());
+            logger.error("Lỗi khi lấy tất cả file urls: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(null);
         }
     }
 
-
     @GetMapping("/files/search")
-    public ResponseEntity<List<SingleMovieStream>> searchFiles(
+    public ResponseEntity<Page<SingleMovieStream>> searchFiles(
             @RequestParam(value = "keyword", required = false) String keyword,
-            @RequestParam(value = "type", required = false) String type) {
+            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            List<SingleMovieStream> streams = fileUploadService.searchFileStreams(keyword);
+            logger.debug("Yêu cầu tìm kiếm file với keyword: {}, type: {}, page: {}, size: {}", keyword, type, page, size);
+            Page<SingleMovieStream> streams = fileUploadService.searchFileStreams(keyword, page, size);
 
-            // Lọc theo loại file nếu type được cung cấp
             if (type != null && !type.trim().isEmpty()) {
-                streams = filterByFileType(streams, type.trim().toLowerCase());
-                if (streams.isEmpty()) {
-                    logger.info("No streams found for type: {}", type);
+                List<SingleMovieStream> filteredStreams = filterByFileType(streams.getContent(), type.trim().toLowerCase());
+                streams = new PageImpl<>(filteredStreams, PageRequest.of(page, size), streams.getTotalElements());
+                if (filteredStreams.isEmpty()) {
+                    logger.info("Không tìm thấy stream nào cho type: {}", type);
                 }
             }
 
+            logger.info("Đã tìm thấy {} streams", streams.getTotalElements());
             return ResponseEntity.ok(streams);
         } catch (Exception e) {
-            System.err.println("Lỗi khi tìm kiếm: " + e.getMessage());
+            logger.error("Lỗi khi tìm kiếm file: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(null);
         }
     }
 
-    /**
-     * Lọc danh sách SingleMovieStream theo loại file (ảnh hoặc video).
-     * @param streams Danh sách chưa lọc
-     * @param type Loại file (images hoặc videos)
-     * @return Danh sách đã lọc
-     */
     private List<SingleMovieStream> filterByFileType(List<SingleMovieStream> streams, String type) {
         List<SingleMovieStream> filteredStreams = new ArrayList<>();
         for (SingleMovieStream stream : streams) {
@@ -95,7 +113,4 @@ public class FileUploadController {
         }
         return filteredStreams;
     }
-
-    // Thêm logger để debug (nếu cần)
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(FileUploadController.class);
 }

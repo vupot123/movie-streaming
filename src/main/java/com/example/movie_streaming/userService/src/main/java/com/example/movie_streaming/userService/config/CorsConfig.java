@@ -1,4 +1,4 @@
-package com.example.movie_streaming.userService.config;
+package com.example.movie_streaming.errorService.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,18 +16,22 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:5183",
-                "http://127.0.0.1:5500",
-                "https://movie-streaming-stream-service-319946458144.asia-southeast1.run.app"
-        ));
+        // Cho phép tất cả origin bằng pattern
+        config.addAllowedOriginPattern("*"); // Thay setAllowedOrigins bằng pattern để hỗ trợ allowCredentials
 
+        // Cho phép tất cả phương thức HTTP
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"));
+
+        // Cho phép tất cả header
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // Quan trọng: bật credentials
+
+        // Bật credentials để hỗ trợ gửi token
+        config.setAllowCredentials(true);
+
+        // Thời gian cache pre-flight request
         config.setMaxAge(3600L);
 
+        // Áp dụng cho tất cả endpoint
         source.registerCorsConfiguration("/**", config);
 
         return new CorsFilter(source);

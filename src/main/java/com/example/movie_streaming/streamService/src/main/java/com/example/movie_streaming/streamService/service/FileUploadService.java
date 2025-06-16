@@ -12,13 +12,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -120,61 +122,75 @@ public class FileUploadService {
     }
 
     /**
-     * Lấy tất cả thông tin file từ database
+     * Lấy tất cả thông tin file từ database với phân trang
+     * @param page Số trang (mặc định 0)
+     * @param size Số bản ghi mỗi trang (mặc định 10)
      * @return Map chứa danh sách file hoặc trạng thái
      */
-    public Map<String, Object> getAllFiles() {
+    public Map<String, Object> getAllFiles(int page, int size) {
         Map<String, Object> response = new HashMap<>();
         try {
-            List<SingleMovieStream> streams = singleMovieStreamRepository.findAllByOrderByIdAsc();
-            if (streams.isEmpty()) {
+            logger.debug("Lấy tất cả file từ database với page: {}, size: {}", page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<SingleMovieStream> streamPage = singleMovieStreamRepository.findAllByOrderByIdAsc(pageable);
+            if (streamPage.isEmpty()) {
                 response.put("status", "NO_FILES_FOUND");
-                logger.warn("No streams found in database");
+                logger.warn("Không tìm thấy stream nào trong database");
             } else {
-                response.put("files", streams);
+                response.put("content", streamPage.getContent());
+                response.put("totalElements", streamPage.getTotalElements());
+                response.put("totalPages", streamPage.getTotalPages());
+                response.put("currentPage", page);
             }
             return response;
         } catch (Exception e) {
-            logger.error("Error retrieving all files: {}", e.getMessage());
+            logger.error("Lỗi khi lấy tất cả file: {}", e.getMessage());
             throw new RuntimeException("Failed to retrieve all files: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Lấy danh sách tất cả các SingleMovieStream từ database
+     * Lấy danh sách tất cả các SingleMovieStream từ database với phân trang
+     * @param page Số trang (mặc định 0)
+     * @param size Số bản ghi mỗi trang (mặc định 10)
+     * @return Page chứa danh sách SingleMovieStream
      */
-    public List<SingleMovieStream> getAllFileStreams() {
+    public Page<SingleMovieStream> getAllFileStreams(int page, int size) {
         try {
-            List<SingleMovieStream> streams = singleMovieStreamRepository.findAllByOrderByIdAsc();
-            if (streams.isEmpty()) {
-                logger.warn("No streams found in database");
+            logger.debug("Lấy tất cả file streams từ database với page: {}, size: {}", page, size);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<SingleMovieStream> streamPage = singleMovieStreamRepository.findAllByOrderByIdAsc(pageable);
+            if (streamPage.isEmpty()) {
+                logger.warn("Không tìm thấy stream nào trong database");
             }
-            return streams;
+            return streamPage;
         } catch (Exception e) {
-            logger.error("Error retrieving all file streams: {}", e.getMessage());
+            logger.error("Lỗi khi lấy tất cả file streams: {}", e.getMessage());
             throw new RuntimeException("Failed to retrieve file streams: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Tìm kiếm danh sách SingleMovieStream dựa trên từ khóa (fileName hoặc fileUrl)
+     * Tìm kiếm danh sách SingleMovieStream dựa trên từ khóa (fileName hoặc fileUrl) với phân trang
      * @param search Từ khóa tìm kiếm
-     * @return Danh sách SingleMovieStream khớp với từ khóa
+     * @param page Số trang (mặc định 0)
+     * @param size Số bản ghi mỗi trang (mặc định 10)
+     * @return Page chứa danh sách SingleMovieStream khớp với từ khóa
      */
-    public List<SingleMovieStream> searchFileStreams(String search) {
+    public Page<SingleMovieStream> searchFileStreams(String search, int page, int size) {
         try {
+            logger.debug("Tìm kiếm file streams với từ khóa: {}, page: {}, size: {}", search, page, size);
+            Pageable pageable = PageRequest.of(page, size);
             if (search == null || search.trim().isEmpty()) {
-                return getAllFileStreams(); // Trả về tất cả nếu search rỗng
+                return singleMovieStreamRepository.findAllByOrderByIdAsc(pageable);
             }
-
-            // Tìm kiếm dựa trên fileName hoặc fileUrl (sử dụng LIKE để tìm kiếm không chính xác)
-            List<SingleMovieStream> streams = singleMovieStreamRepository.findByFileNameContainingIgnoreCaseOrFileUrlContainingIgnoreCase(search);
+            Page<SingleMovieStream> streams = singleMovieStreamRepository.findByFileNameContainingIgnoreCaseOrFileUrlContainingIgnoreCase(search, pageable);
             if (streams.isEmpty()) {
-                logger.warn("No streams found for search term: {}", search);
+                logger.warn("Không tìm thấy stream nào cho từ khóa: {}", search);
             }
             return streams;
         } catch (Exception e) {
-            logger.error("Error searching file streams for term {}: {}", search, e.getMessage());
+            logger.error("Lỗi khi tìm kiếm file streams với từ khóa {}: {}", search, e.getMessage());
             throw new RuntimeException("Failed to search file streams: " + e.getMessage(), e);
         }
     }
@@ -198,7 +214,7 @@ public class FileUploadService {
 
     private void sendKafkaMessage(String action, Long fileId, String fileName, String fileUrl, String contentType) {
         Map<String, Object> payload = new HashMap<>();
-        payload.put("fileId", fileId != null ? fileId : ""); // Sử dụng fileId thay movieId
+        payload.put("fileId", fileId != null ? fileId : "");
         payload.put("fileName", fileName != null ? fileName : "");
         payload.put("fileUrl", fileUrl != null ? fileUrl : "");
         payload.put("contentType", contentType != null ? contentType : "");
@@ -207,7 +223,7 @@ public class FileUploadService {
         KafkaMessage kafkaMessage = new KafkaMessage("file-upload", action, null, payload);
         try {
             String messageJson = objectMapper.writeValueAsString(kafkaMessage);
-            logger.debug("Sending Kafka message: action={}, payload={}", action, messageJson); // Thêm log debug
+            logger.debug("Sending Kafka message: action={}, payload={}", action, messageJson);
             kafkaProducerService.sendMessage("file-uploaded-topic", messageJson);
         } catch (Exception e) {
             logger.error("Failed to send Kafka message for action {}: {}", action, e.getMessage());

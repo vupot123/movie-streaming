@@ -1,5 +1,8 @@
 package com.example.movie_streaming.errorService.kafka;
+
 import com.example.movie_streaming.errorService.model.dto.response.ErrorReportResponse;
+import com.example.movie_streaming.errorService.model.entity.ErrorReport;
+import com.example.movie_streaming.errorService.model.entity.ErrorStatus;
 import com.example.movie_streaming.errorService.repository.ErrorReportRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -30,23 +33,22 @@ public class KafkaConsumerService {
         try {
             logger.info("📥 Nhận từ Kafka: {}", messageJson);
 
-            // Parse JSON thành KafkaMessage
             KafkaMessage message = objectMapper.readValue(messageJson, KafkaMessage.class);
             Map<String, Object> payload = message.getPayload();
 
-            if (message.getEntityType().equals("error-report")) {
+            if ("error-report".equals(message.getEntityType())) {
                 switch (message.getAction()) {
                     case "CREATE":
                         handleCreate(payload);
                         break;
                     case "UPDATE":
-                        handleUpdate(payload);
+                        handleUpdate(message.getEntityId(), payload);
                         break;
                     case "DELETE":
-                        handleDelete(payload);
+                        handleDelete(message.getEntityId());
                         break;
                     case "GET_ALL":
-                        handleGetAll();
+                        handleGetAll(); // Có thể bỏ qua nếu không cần logic đặc biệt
                         break;
                     default:
                         logger.warn("Hành động không xác định: {}", message.getAction());
@@ -58,27 +60,52 @@ public class KafkaConsumerService {
             acknowledgment.acknowledge();
         } catch (Exception e) {
             logger.error("❌ Lỗi xử lý thông điệp: {}. Lỗi: {}", messageJson, e.getMessage(), e);
-
         }
     }
 
     private void handleCreate(Map<String, Object> payload) {
         logger.info("Xử lý CREATE với payload: {}", payload);
-
+        try {
+            ErrorReportResponse response = objectMapper.convertValue(payload, ErrorReportResponse.class);
+            ErrorReport report = ErrorReport.builder()
+                    .movieId(response.getMovieId())
+                    .issue(response.getIssue())
+                    .status(response.getStatus())
+                    .createdAt(response.getCreatedAt())
+                    .build();
+            errorReportRepository.save(report);
+            logger.info("Đã lưu báo cáo lỗi với ID: {}", report.getId());
+        } catch (Exception e) {
+            logger.error("Lỗi khi xử lý CREATE: {}", e.getMessage(), e);
+        }
     }
 
-    private void handleUpdate(Map<String, Object> payload) {
-        logger.info("Xử lý UPDATE với payload: {}", payload);
-
+    private void handleUpdate(Long id, Map<String, Object> payload) {
+        logger.info("Xử lý UPDATE với ID: {}, payload: {}", id, payload);
+        try {
+            ErrorReport report = errorReportRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Báo cáo lỗi không tồn tại"));
+            ErrorReportResponse response = objectMapper.convertValue(payload, ErrorReportResponse.class);
+            report.setStatus(response.getStatus());
+            errorReportRepository.save(report);
+            logger.info("Đã cập nhật báo cáo lỗi với ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Lỗi khi xử lý UPDATE cho ID {}: {}", id, e.getMessage(), e);
+        }
     }
 
-    private void handleDelete(Map<String, Object> payload) {
-        logger.info("Xử lý DELETE với payload: {}", payload);
+    private void handleDelete(Long id) {
+        logger.info("Xử lý DELETE với ID: {}", id);
+        try {
+            errorReportRepository.deleteById(id);
+            logger.info("Đã xóa báo cáo lỗi với ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Lỗi khi xử lý DELETE cho ID {}: {}", id, e.getMessage(), e);
+        }
     }
 
     private void handleGetAll() {
-        logger.info("Xử lý GET_ALL: Lấy tất cả báo cáo lỗi");
-
+        logger.info("Xử lý GET_ALL: Lấy tất cả báo cáo lỗi (phân trang và lọc đã xử lý trong service)");
     }
 
     private static class KafkaMessage {
