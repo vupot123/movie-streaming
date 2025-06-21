@@ -89,7 +89,6 @@ public class UserController {
         }
     }
 
-
     @DeleteMapping("/favorites/{movieId}")
     public ResponseEntity<ApiResponse<String>> removeFavorite(HttpServletRequest request, @PathVariable Long movieId) {
         try {
@@ -154,6 +153,31 @@ public class UserController {
             return ResponseEntity.status(400).body(new ApiResponse<>(400, e.getMessage(), null));
         } catch (Exception e) {
             logger.error("Lỗi không xác định khi ghi lại lượt xem phim với movieId: {}", body.get("movieId"), e);
+            return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
+        }
+    }
+
+    /**
+     * Lấy thông tin của người dùng hiện tại
+     * @param request Yêu cầu HTTP để trích xuất token
+     * @return ResponseEntity chứa thông tin người dùng
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getMe(HttpServletRequest request) {
+        try {
+            logger.debug("Yêu cầu lấy thông tin người dùng hiện tại");
+            String username = extractUsernameFromRequest(request);
+            Map<String, Object> userInfo = userService.getMe(username);
+            logger.info("Lấy thông tin người dùng thành công cho username: {}", username);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Lấy thông tin người dùng thành công", userInfo));
+        } catch (InvalidCredentialsException e) {
+            logger.warn("Lỗi lấy thông tin người dùng: {}", e.getMessage());
+            return ResponseEntity.status(401).body(new ApiResponse<>(401, e.getMessage(), null));
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Lỗi lấy thông tin người dùng: {}", e.getMessage());
+            return ResponseEntity.status(404).body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Lỗi không xác định khi lấy thông tin người dùng", e);
             return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
         }
     }

@@ -261,4 +261,29 @@ public class UserService {
             logger.error("Lỗi khi gửi tin nhắn Kafka cho sự kiện xem phim: user={}, movieId={}", username, movieId, e);
         }
     }
+
+    /**
+     * Lấy thông tin của người dùng hiện tại
+     * @param username Tên người dùng đã được xác thực
+     * @return Map chứa thông tin người dùng (username, email, role, name)
+     */
+    public Map<String, Object> getMe(String username) {
+        logger.debug("Lấy thông tin người dùng hiện tại: {}", username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Không tìm thấy người dùng");
+                });
+
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("username", user.getUsername());
+        userInfo.put("email", user.getEmail());
+        userInfo.put("role", user.getRole() == 0 ? "ADMIN" : "USER");
+        userInfo.put("name", user.getName());
+        userInfo.put("createdAt", user.getCreatedAt());
+
+        logger.info("Đã lấy thông tin thành công cho người dùng: {}", username);
+        return userInfo;
+    }
 }
