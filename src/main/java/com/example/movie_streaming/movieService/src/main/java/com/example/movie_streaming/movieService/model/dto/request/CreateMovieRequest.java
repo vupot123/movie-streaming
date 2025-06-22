@@ -18,13 +18,14 @@ public class CreateMovieRequest {
     private String intro;
     private String ageRating;
     private Long views;
+    private List<String> genreNames;
+    private String countryName;
+    private String smallBanner;
+    private String largeBanner;
 
     private List<Long> actorIds; // ID diễn viên đã có
     private List<ActorRequest> newActors; // Diễn viên mới
 
-    private List<Integer> genreIds;
-    private Integer countryId;
-
-    private String smallBanner;
-    private String largeBanner;
+    private List<Long> collections; // ID các bộ sưu tập
+    private List<CreateSeasonRequest> seasons;
 }

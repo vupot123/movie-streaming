@@ -84,8 +84,8 @@ public class KafkaConsumerService {
                     createRequest.setAgeRating((String) message.getPayload().get("ageRating"));
                     createRequest.setViews(((Number) message.getPayload().get("views")).longValue());
                     createRequest.setActorIds((List<Long>) message.getPayload().get("actorIds"));
-                    createRequest.setGenreIds((List<Integer>) message.getPayload().get("genreIds"));
-                    createRequest.setCountryId(Integer.parseInt((String)  message.getPayload().get("countryId")));
+                    createRequest.setGenreNames((List<String>) message.getPayload().get("genreName"));
+                    createRequest.setCountryName((String) message.getPayload().get("countryName"));
                     createRequest.setSmallBanner((String) message.getPayload().get("smallBanner"));
                     createRequest.setLargeBanner((String) message.getPayload().get("largeBanner"));
                     movieService.createMovie(createRequest);
@@ -101,8 +101,8 @@ public class KafkaConsumerService {
                     updateRequest.setAgeRating((String) message.getPayload().get("ageRating"));
                     updateRequest.setViews(((Number) message.getPayload().get("views")).longValue());
                     updateRequest.setActorIds((List<Long>) message.getPayload().get("actorIds"));
-                    updateRequest.setGenreIds((List<Integer>) message.getPayload().get("genreIds"));
-                    updateRequest.setCountryId(Integer.parseInt((String)  message.getPayload().get("countryId")));
+                    updateRequest.setGenreNames((List<String>) message.getPayload().get("genreName"));
+                    updateRequest.setCountryName((String) message.getPayload().get("countryName"));
                     updateRequest.setSmallBanner((String) message.getPayload().get("smallBanner"));
                     updateRequest.setLargeBanner((String) message.getPayload().get("largeBanner"));
                     movieService.updateMovie(entityId, updateRequest);

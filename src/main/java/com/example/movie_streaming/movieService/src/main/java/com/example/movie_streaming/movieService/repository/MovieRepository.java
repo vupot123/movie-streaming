@@ -1,6 +1,10 @@
 package com.example.movie_streaming.movieService.repository;
 
 import com.example.movie_streaming.movieService.model.entity.Movie;
+import io.micrometer.common.lang.Nullable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -12,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecificationExecutor<Movie> {
+
     @EntityGraph(attributePaths = {
             "movieActors.actor",
             "movieGenres.genre",
@@ -30,6 +35,7 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
     })
     List<Movie> findAll();
 
+    // Nếu không dùng đến thì xoá
     @Query("SELECT m FROM Movie m " +
             "LEFT JOIN m.movieActors ma " +
             "LEFT JOIN ma.actor a " +
@@ -38,7 +44,6 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
     List<Movie> searchByTitleOrActorName(@Param("keyword") String keyword);
 
     boolean existsByTitleIgnoreCase(String title);
-
     boolean existsByTitleIgnoreCaseAndIdNot(String title, Long id);
 
     @EntityGraph(attributePaths = {
@@ -52,5 +57,19 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
     })
     List<Movie> findAllByIdIn(Set<Long> ids);
 
+    @EntityGraph(attributePaths = {
+            "movieActors.actor",
+            "movieActors.actor.movieActors.movie",  // cần để actor.getMovieActors() không bị lazy
+            "movieGenres.genre",
+            "country",
+            "trailers",
+            "banner",
+            "seasons",
+            "seasons.episodes",
+            "collectionMovies.collection"
+    })
+    Page<Movie> findAll(Specification<Movie> spec, Pageable pageable);
+
 
 }
+

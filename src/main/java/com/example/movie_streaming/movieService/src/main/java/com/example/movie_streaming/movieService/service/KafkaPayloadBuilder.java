@@ -20,8 +20,8 @@ public class KafkaPayloadBuilder {
         payload.put("ageRating", request.getAgeRating());
         payload.put("views", request.getViews() != null ? request.getViews() : 0L);
         payload.put("actorIds", request.getActorIds());
-        payload.put("genreIds", request.getGenreIds());
-        payload.put("countryId", request.getCountryId());
+        payload.put("genreNames", request.getGenreNames());
+        payload.put("countryName", request.getCountryName());
         payload.put("smallBanner", request.getSmallBanner());
         payload.put("largeBanner", request.getLargeBanner());
         return payload;
@@ -40,8 +40,8 @@ public class KafkaPayloadBuilder {
         payload.put("ageRating", request.getAgeRating() != null ? request.getAgeRating() : movie.getAgeRating());
         payload.put("views", request.getViews() != null ? request.getViews() : movie.getViews());
         payload.put("actorIds", request.getActorIds());
-        payload.put("genreIds", request.getGenreIds());
-        payload.put("countryId", request.getCountryId());
+        payload.put("genreNames", request.getGenreNames());
+        payload.put("countryName", request.getCountryName());
         payload.put("smallBanner", request.getSmallBanner() != null ? request.getSmallBanner() : movie.getBanner().getSmallBanner());
         payload.put("largeBanner", request.getLargeBanner() != null ? request.getLargeBanner() : movie.getBanner().getLargeBanner());
         return payload;

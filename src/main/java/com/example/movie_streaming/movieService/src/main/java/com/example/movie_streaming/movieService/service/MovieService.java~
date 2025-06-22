@@ -4,10 +4,12 @@ import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
 import com.example.movie_streaming.movieService.kafka.KafkaMessage;
 import com.example.movie_streaming.movieService.kafka.KafkaProducerService;
 import com.example.movie_streaming.movieService.model.dto.request.CreateMovieRequest;
+import com.example.movie_streaming.movieService.model.dto.request.CreateSeasonRequest;
 import com.example.movie_streaming.movieService.model.dto.request.MovieFilterRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateMovieRequest;
 import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.movieService.model.entity.*;
+import com.example.movie_streaming.movieService.model.entity.Collection;
 import com.example.movie_streaming.movieService.repository.*;
 import com.example.movie_streaming.movieService.specification.MovieSpecification;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +18,6 @@ import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,33 +37,50 @@ public class MovieService {
     private final MovieGenreRepository movieGenreRepository;
     private final SeasonRepository seasonRepository;
     private final ActorRepository actorRepository;
+    private final GenreRepository genreRepository;
+    private final CountryRepository countryRepository;
+    private final CollectionRepository collectionRepository;
+    private final EpisodeRepository episodeRepository;
+    private final CollectionMovieRepository collectionMovieRepository;
     private final MovieMapper movieMapper;
 
     public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
         int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() - 1 : 0;
         int size = request.getSize() != null && request.getSize() > 0 ? request.getSize() : 20;
-
-        Sort sort = Sort.unsorted();
-        if (request.getSort() != null) {
-            switch (request.getSort().toLowerCase()) {
-                case "views" -> sort = Sort.by(Sort.Direction.DESC, "views");
-                case "release_date", "year" -> sort = Sort.by(Sort.Direction.DESC, "year");
-                case "title" -> sort = Sort.by(Sort.Direction.ASC, "title");
-                default -> sort = Sort.by(Sort.Direction.DESC, "id");
-            }
-        }
-
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = PageRequest.of(page, size);
         return movieRepository.findAll(new MovieSpecification(request), pageable)
                 .map(movieMapper::toResponse);
     }
-
 
     @Transactional(readOnly = true)
     public List<MovieResponse> getAllMovies() {
         List<Movie> movies = movieRepository.findAll();
         movies.forEach(this::initializeMovie);
         return movies.stream().map(movieMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MovieResponse> getAllOrSearch(String keyword, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        List<Movie> movies;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            movies = movieRepository.searchByTitleOrActorName(keyword.trim());
+        } else {
+            movies = movieRepository.findAll();
+        }
+
+        movies.forEach(this::initializeMovie);
+
+        // Áp dụng phân trang thủ công
+        int start = Math.min(page * size, movies.size());
+        int end = Math.min(start + size, movies.size());
+
+        List<MovieResponse> movieResponses = movies.subList(start, end).stream()
+                .map(movieMapper::toResponse)
+                .toList();
+
+        return new org.springframework.data.domain.PageImpl<>(movieResponses, pageable, movies.size());
     }
 
     @Transactional(readOnly = true)
@@ -95,16 +113,11 @@ public class MovieService {
             newActorIds = newActors.stream().map(Actor::getId).toList();
         }
 
-        // Gộp actorIds và newActorIds, loại bỏ null và trùng
-        Set<Long> allActorIds = newActorIds.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<Long> allActorIds = newActorIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
         if (request.getActorIds() != null) {
-            allActorIds.addAll(request.getActorIds().stream().filter(Objects::nonNull).collect(Collectors.toSet()));
+            allActorIds.addAll(request.getActorIds().stream().filter(Objects::nonNull).toList());
         }
-        request.setActorIds(new ArrayList<>(allActorIds));
 
-        // Tạo Movie entity
         Movie movie = Movie.builder()
                 .title(request.getTitle().trim())
                 .type(MovieType.fromString(request.getType()))
@@ -117,14 +130,64 @@ public class MovieService {
 
         Movie savedMovie = movieRepository.save(movie);
 
-        saveMovieRelations(
-                savedMovie,
-                request.getActorIds(),
-                request.getGenreIds(),
-                request.getCountryId(),
-                request.getSmallBanner(),
-                request.getLargeBanner()
-        );
+        // Convert genreName to genreIds
+        List<Integer> genreIds = new ArrayList<>();
+        if (request.getGenreNames() != null) {
+            for (String name : request.getGenreNames()) {
+                genreRepository.findByNameIgnoreCase(name.trim())
+                        .ifPresentOrElse(
+                                genre -> genreIds.add(genre.getId()),
+                                () -> { throw new IllegalArgumentException("Thể loại không tồn tại: " + name); }
+                        );
+            }
+        }
+
+        // Convert countryName to countryId
+        Integer countryId = null;
+        if (request.getCountryName() != null) {
+            countryId = countryRepository.findByNameIgnoreCase(request.getCountryName().trim())
+                    .map(Country::getId)
+                    .orElseThrow(() -> new IllegalArgumentException("Quốc gia không tồn tại: " + request.getCountryName()));
+        }
+
+        if (request.getCollections() != null && !request.getCollections().isEmpty()) {
+            List<CollectionMovie> collectionMovies = request.getCollections().stream()
+                    .distinct()
+                    .map(cid -> {
+                        Collection collection = new Collection();
+                        collection.setId(cid);
+                        return new CollectionMovie(new CollectionMovieId(movie.getId(), cid), collection, movie);
+                    })
+                    .toList();
+            collectionMovieRepository.saveAll(collectionMovies);
+        }
+
+        if (request.getSeasons() != null && !request.getSeasons().isEmpty()) {
+            for (CreateSeasonRequest s : request.getSeasons()) {
+                Season season = Season.builder()
+                        .movie(movie)
+                        .seasonNumber(s.getSeasonNumber())
+                        .name(s.getName())
+                        .build();
+                Season savedSeason = seasonRepository.save(season);
+
+                if (s.getEpisodes() != null) {
+                    List<Episode> episodes = s.getEpisodes().stream()
+                            .map(e -> Episode.builder()
+                                    .season(savedSeason)
+                                    .episodeNumber(e.getEpisodeNumber())
+                                    .dubbedUrl(e.getDubbed())
+                                    .subtitleUrl(e.getSubbed())
+                                    .build())
+                            .toList();
+                    episodeRepository.saveAll(episodes);
+                }
+            }
+        }
+
+
+        saveMovieRelations(savedMovie, new ArrayList<>(allActorIds), genreIds, countryId,
+                request.getSmallBanner(), request.getLargeBanner());
 
         kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "CREATE", savedMovie.getId(),
                 KafkaPayloadBuilder.buildCreatePayload(request)));
@@ -142,7 +205,6 @@ public class MovieService {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim với ID: " + id));
 
-        // Kiểm tra tiêu đề mới (nếu có)
         if (request.getTitle() != null && !request.getTitle().trim().equalsIgnoreCase(movie.getTitle())) {
             String normalizedTitle = request.getTitle().trim().toLowerCase();
             if (movieRepository.existsByTitleIgnoreCaseAndIdNot(normalizedTitle, id)) {
@@ -150,7 +212,6 @@ public class MovieService {
             }
         }
 
-        // Tạo diễn viên mới nếu có
         List<Long> newActorIds = new ArrayList<>();
         if (request.getNewActors() != null && !request.getNewActors().isEmpty()) {
             List<Actor> newActors = request.getNewActors().stream()
@@ -160,35 +221,45 @@ public class MovieService {
             newActorIds = newActors.stream().map(Actor::getId).toList();
         }
 
-        // Gộp actorIds hiện có và newActorIds
-        Set<Long> allActorIds = newActorIds.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        Set<Long> allActorIds = newActorIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
         if (request.getActorIds() != null) {
-            allActorIds.addAll(request.getActorIds().stream().filter(Objects::nonNull).collect(Collectors.toSet()));
+            allActorIds.addAll(request.getActorIds().stream().filter(Objects::nonNull).toList());
         }
 
-        // Xóa quan hệ cũ
+        // Convert genreName to genreIds
+        List<Integer> genreIds = new ArrayList<>();
+        if (request.getGenreNames() != null) {
+            for (String name : request.getGenreNames()) {
+                genreRepository.findByNameIgnoreCase(name.trim())
+                        .ifPresentOrElse(
+                                genre -> genreIds.add(genre.getId()),
+                                () -> { throw new IllegalArgumentException("Thể loại không tồn tại: " + name); }
+                        );
+            }
+        }
+
+        // Convert countryName to countryId
+        Integer countryId = null;
+        if (request.getCountryName() != null) {
+            countryId = countryRepository.findByNameIgnoreCase(request.getCountryName().trim())
+                    .map(Country::getId)
+                    .orElseThrow(() -> new IllegalArgumentException("Quốc gia không tồn tại: " + request.getCountryName()));
+        }
+
         deleteMovieRelations(id);
 
-        // Lưu quan hệ mới
-        saveMovieRelations(movie,
-                new ArrayList<>(allActorIds),
-                request.getGenreIds(),
-                request.getCountryId(),
-                request.getSmallBanner(),
-                request.getLargeBanner()
-        );
+        saveMovieRelations(movie, new ArrayList<>(allActorIds), genreIds, countryId,
+                request.getSmallBanner(), request.getLargeBanner());
 
-        // Cập nhật thông tin movie
-        boolean updated = updateMovieFields(movie, request);
-
+        updateMovieFields(movie, request);
         Movie updatedMovie = movieRepository.save(movie);
+
         kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "UPDATE", id,
                 KafkaPayloadBuilder.buildUpdatePayload(updatedMovie, request)));
 
         return movieMapper.toResponse(updatedMovie);
     }
+
 
     @Transactional
     public void deleteMovie(Long id) {
@@ -279,9 +350,9 @@ public class MovieService {
             movie.setViews(request.getViews());
             updated = true;
         }
-        if (request.getCountryId() != null) {
-            Country country = new Country();
-            country.setId(request.getCountryId());
+        if (request.getCountryName() != null && !request.getCountryName().isBlank()) {
+            Country country = countryRepository.findByNameIgnoreCase(request.getCountryName().trim())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy quốc gia: " + request.getCountryName()));
             movie.setCountry(country);
             updated = true;
         }
@@ -331,11 +402,21 @@ public class MovieService {
     }
 
     private void deleteMovieRelations(Long movieId) {
+        // 1. Xóa episodes theo từng season
+        List<Season> seasons = seasonRepository.findByMovieId(movieId);
+        for (Season season : seasons) {
+            episodeRepository.deleteBySeasonId(season.getId());
+        }
+
+        // 2. Xóa seasons
+        seasonRepository.deleteByMovieId(movieId);
+
+        // 3. Xóa liên kết khác
         movieActorRepository.deleteByMovieId(movieId);
         movieGenreRepository.deleteByMovieId(movieId);
         trailerRepository.deleteByMovieId(movieId);
         bannerRepository.deleteByMovieId(movieId);
-        seasonRepository.deleteByMovieId(movieId);
+        collectionMovieRepository.deleteByMovieId(movieId); // ← cần thiết!
     }
 
     private void validateCreateRequest(CreateMovieRequest request) {

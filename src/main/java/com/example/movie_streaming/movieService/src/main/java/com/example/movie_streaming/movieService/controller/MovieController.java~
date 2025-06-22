@@ -87,11 +87,11 @@ public class MovieController {
         return ResponseEntity.ok(ApiResponse.success(200, "Filtered movies successfully", result));
     }
 
-//    @GetMapping("/search")
-//    public ResponseEntity<ApiResponse<List<MovieResponse>>> searchMovies(@RequestParam("keyword") String keyword) {
-//        log.info("Nhận yêu cầu tìm kiếm phim với từ khóa: {}", keyword);
-//        List<MovieResponse> result = movieService.searchMovies(keyword);
-//        log.info("Tìm kiếm phim thành công, số lượng: {}", result.size());
-//        return ResponseEntity.ok(ApiResponse.success(200, "Search success", result));
-//    }
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<List<MovieResponse>>> searchMovies(@RequestParam("keyword") String keyword) {
+        log.info("Nhận yêu cầu tìm kiếm phim với từ khóa: {}", keyword);
+        List<MovieResponse> result = movieService.searchMovies(keyword);
+        log.info("Tìm kiếm phim thành công, số lượng: {}", result.size());
+        return ResponseEntity.ok(ApiResponse.success(200, "Search success", result));
+    }
 }

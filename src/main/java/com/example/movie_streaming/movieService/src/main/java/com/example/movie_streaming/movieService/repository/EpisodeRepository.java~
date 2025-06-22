@@ -1,0 +1,14 @@
+package com.example.movie_streaming.movieService.repository;
+
+import com.example.movie_streaming.movieService.model.entity.CollectionMovie;
+import com.example.movie_streaming.movieService.model.entity.CollectionMovieId;
+import com.example.movie_streaming.movieService.model.entity.Episode;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+
+public interface EpisodeRepository extends JpaRepository<Episode, Long> {
+    void deleteBySeasonId(Long seasonId);
+    
+}

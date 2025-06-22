@@ -5,6 +5,8 @@ import com.example.movie_streaming.movieService.model.dto.request.ActorRequest;
 import com.example.movie_streaming.movieService.model.dto.response.ActorResponse;
 import com.example.movie_streaming.movieService.service.ActorService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,9 +20,18 @@ public class ActorController {
     private final ActorService actorService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ActorResponse>>> getAll() {
-        return ResponseEntity.ok(ApiResponse.success(200, "Actors fetched successfully", actorService.getAllActors()));
+    public ResponseEntity<ApiResponse<Page<ActorResponse>>> getAllOrSearch(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword
+    ) {
+        Page<ActorResponse> result = (keyword == null || keyword.trim().isEmpty())
+                ? actorService.getAllActors(PageRequest.of(page, size))
+                : actorService.search(keyword.trim(), PageRequest.of(page, size));
+
+        return ResponseEntity.ok(ApiResponse.success(200, "Actors fetched successfully", result));
     }
+
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ActorResponse>> getById(@PathVariable("id") Long id) {
@@ -43,8 +54,4 @@ public class ActorController {
         return ResponseEntity.ok(ApiResponse.success(200, "Actor deleted successfully", null));
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<List<ActorResponse>>> search(@RequestParam("keyword") String keyword) {
-        return ResponseEntity.ok(ApiResponse.success(200, "Actor searched successfully", actorService.search(keyword)));
-    }
 }

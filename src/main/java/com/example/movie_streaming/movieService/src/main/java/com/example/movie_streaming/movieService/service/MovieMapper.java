@@ -21,7 +21,7 @@ public class MovieMapper {
                 .id(movie.getId())
                 .title(movie.getTitle())
                 .subtitle(movie.getSubtitle())
-                .type(movie.getType().toString())
+                .type(movie.getType() != null ? movie.getType().toString() : null)
                 .year(movie.getYear())
                 .duration(movie.getDuration())
                 .intro(movie.getIntro())
@@ -33,7 +33,22 @@ public class MovieMapper {
                 .genreNames(mapGenres(movie.getMovieGenres()))
                 .countries(movie.getCountry() != null ? movie.getCountry().getName() : null)
                 .seasons(mapSeasons(movie.getSeasons()))
+                .collections(mapCollections(movie.getCollectionMovies()))
                 .build();
+    }
+
+    private Set<CollectionResponse> mapCollections(Set<CollectionMovie> collectionMovies) {
+        if (collectionMovies == null) return Set.of();
+        return collectionMovies.stream()
+                .map(cm -> {
+                    var collection = cm.getCollection();
+                    return CollectionResponse.builder()
+                            .id(collection.getId())
+                            .name(collection.getName())
+                            .featured(collection.getFeatured())
+                            .build();
+                })
+                .collect(Collectors.toSet());
     }
 
     private List<MovieTrailerResponse> mapTrailers(Set<MovieTrailer> trailers) {
@@ -110,7 +125,7 @@ public class MovieMapper {
                 .name(request.getName())
                 .gender(gender)
                 .dob(request.getDob())
-                .avatarUrl(request.getAvatarUrl())
+                //.avatarUrl(request.getAvatarUrl())
                 .bio(request.getBio())
                 .build();
     }

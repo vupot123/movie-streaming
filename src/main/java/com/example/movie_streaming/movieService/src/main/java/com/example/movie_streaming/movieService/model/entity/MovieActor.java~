@@ -24,7 +24,7 @@ public class MovieActor {
 
     @ManyToOne
     @MapsId("actorId")
-    @JoinColumn(name = "actor_id", foreignKey = @ForeignKey(name = "fk_actor"))
+    @JoinColumn(name = "actor_id")
     @JsonManagedReference
     private Actor actor;
 }

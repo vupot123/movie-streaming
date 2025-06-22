@@ -21,7 +21,7 @@ public class MovieMapper {
                 .id(movie.getId())
                 .title(movie.getTitle())
                 .subtitle(movie.getSubtitle())
-                .type(movie.getType().toString())
+                .type(movie.getType() != null ? movie.getType().toString() : null)
                 .year(movie.getYear())
                 .duration(movie.getDuration())
                 .intro(movie.getIntro())
@@ -33,7 +33,23 @@ public class MovieMapper {
                 .genreNames(mapGenres(movie.getMovieGenres()))
                 .countries(movie.getCountry() != null ? movie.getCountry().getName() : null)
                 .seasons(mapSeasons(movie.getSeasons()))
+                .collections(mapCollections(movie.getCollectionMovies()))
                 .build();
+    }
+
+    private Set<CollectionResponse> mapCollections(Set<CollectionMovie> collectionMovies) {
+        if (collectionMovies == null) return Set.of();
+        return collectionMovies.stream()
+                .map(cm -> {
+                    var collection = cm.getCollection();
+                    return CollectionResponse.builder()
+                            .id(collection.getId())
+                            .name(collection.getName())
+                            .featured(collection.getFeatured())
+                            .movieIds(null) // hoặc bỏ qua nếu không cần
+                            .build();
+                })
+                .collect(Collectors.toSet());
     }
 
     private List<MovieTrailerResponse> mapTrailers(Set<MovieTrailer> trailers) {
@@ -57,25 +73,7 @@ public class MovieMapper {
     private Set<ActorResponse> mapActors(Set<MovieActor> movieActors) {
         if (movieActors == null) return Set.of();
         return movieActors.stream()
-                .map(ma -> {
-                    Actor actor = ma.getActor();
-                    List<Long> movieIds = actor.getMovieActors() != null
-                            ? actor.getMovieActors().stream()
-                            .map(m -> m.getMovie().getId())
-                            .distinct()
-                            .toList()
-                            : List.of();
-
-                    return new ActorResponse(
-                            actor.getId(),
-                            actor.getName(),
-                            actor.getGender() != null ? actor.getGender().name() : null,
-                            actor.getDob(),
-                            actor.getAvatarUrl(),
-                            actor.getBio(),
-                            movieIds
-                    );
-                })
+                .map(ma -> actorMapper.toResponse(ma.getActor()))
                 .collect(Collectors.toSet());
     }
 
@@ -128,7 +126,7 @@ public class MovieMapper {
                 .name(request.getName())
                 .gender(gender)
                 .dob(request.getDob())
-                .avatarUrl(request.getAvatarUrl())
+                //.avatarUrl(request.getAvatarUrl())
                 .bio(request.getBio())
                 .build();
     }

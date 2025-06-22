@@ -32,7 +32,7 @@ public class Actor {
 
     private String bio;
 
-    @OneToMany(mappedBy = "actor", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "actor")
     @ToString.Exclude
     @JsonIgnore
     private List<MovieActor> movieActors;

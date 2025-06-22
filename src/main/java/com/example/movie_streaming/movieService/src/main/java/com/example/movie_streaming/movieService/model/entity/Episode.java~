@@ -10,7 +10,6 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Episode {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

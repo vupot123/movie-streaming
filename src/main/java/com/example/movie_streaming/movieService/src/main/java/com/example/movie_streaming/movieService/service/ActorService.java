@@ -9,6 +9,8 @@ import com.example.movie_streaming.movieService.model.entity.Actor;
 import com.example.movie_streaming.movieService.model.entity.Gender;
 import com.example.movie_streaming.movieService.repository.ActorRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,10 +28,9 @@ public class ActorService {
     private final KafkaProducerService kafkaProducerService;
 
     @Transactional(readOnly = true)
-    public List<ActorResponse> getAllActors() {
-        return actorRepository.findAll().stream()
-                .map(actorMapper::toResponse)
-                .collect(Collectors.toList());
+    public Page<ActorResponse> getAllActors(Pageable pageable) {
+        return actorRepository.findAll(pageable)
+                .map(actorMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -60,7 +61,7 @@ public class ActorService {
 
         if (request.getName() != null) actor.setName(request.getName());
         if (request.getDob() != null) actor.setDob(request.getDob());
-        if (request.getAvatarUrl() != null) actor.setAvatarUrl(request.getAvatarUrl());
+        //if (request.getAvatarUrl() != null) actor.setAvatarUrl(request.getAvatarUrl());
         if (request.getBio() != null) actor.setBio(request.getBio());
         if (request.getGender() != null) {
             actor.setGender(Gender.valueOf(request.getGender().toUpperCase()));
@@ -79,18 +80,29 @@ public class ActorService {
 
     @Transactional
     public void delete(Long id) {
-        if (!actorRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Not found actor ID: " + id);
+        Actor actor = actorRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Not found actor ID: " + id));
+
+        // Clear movieActors để kích hoạt orphanRemoval = true
+        if (actor.getMovieActors() != null) {
+            actor.getMovieActors().clear();
         }
-        actorRepository.deleteById(id);
+
+        actorRepository.delete(actor);
 
         Map<String, Object> payload = Map.of("actorId", id);
         kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("actor", "DELETE", id, payload));
     }
 
-    public List<ActorResponse> search(String keyword) {
-        return actorRepository.findByNameContainingIgnoreCase(keyword)
-                .stream().map(this::toResponse).collect(Collectors.toList());
+
+//    public List<ActorResponse> search(String keyword) {
+//        return actorRepository.findByNameContainingIgnoreCase(keyword)
+//                .stream().map(this::toResponse).collect(Collectors.toList());
+//    }
+
+    public Page<ActorResponse> search(String keyword, Pageable pageable) {
+        return actorRepository.findByNameContainingIgnoreCase(keyword, pageable)
+                .map(actorMapper::toResponse);
     }
 
     private ActorResponse toResponse(Actor actor) {

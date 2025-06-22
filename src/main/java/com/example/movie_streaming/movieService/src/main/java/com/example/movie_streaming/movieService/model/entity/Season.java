@@ -13,6 +13,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Season {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

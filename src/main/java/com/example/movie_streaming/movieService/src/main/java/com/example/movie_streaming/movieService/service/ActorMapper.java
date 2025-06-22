@@ -10,13 +10,6 @@ import java.util.List;
 public class ActorMapper {
 
     public ActorResponse toResponse(Actor actor) {
-        List<Long> movieIds = actor.getMovieActors() != null
-                ? actor.getMovieActors().stream()
-                .map(ma -> ma.getMovie().getId())
-                .distinct()
-                .toList()
-                : List.of();
-
         return new ActorResponse(
                 actor.getId(),
                 actor.getName(),
@@ -24,7 +17,8 @@ public class ActorMapper {
                 actor.getDob(),
                 actor.getAvatarUrl(),
                 actor.getBio(),
-                movieIds
+                null // hoặc List.of() nếu bạn muốn trả về mảng rỗng
         );
     }
+
 }
