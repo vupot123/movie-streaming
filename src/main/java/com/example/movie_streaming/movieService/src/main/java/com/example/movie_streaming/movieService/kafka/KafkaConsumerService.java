@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -35,12 +36,23 @@ public class KafkaConsumerService {
         log.info("📥 Received from Kafka topic movie-topic, partition={}, offset={}: {}",
                 record.partition(), record.offset(), message);
 
+        if (message == null) {
+            log.warn("Received null message, skipping partition={}, offset={}", record.partition(), record.offset());
+            acknowledgment.acknowledge();
+            return;
+        }
+
         try {
+            // Validate required fields
+            if (message.getEntityType() == null) {
+                throw new IllegalArgumentException("EntityType is null");
+            }
+            if ("movie".equals(message.getEntityType()) && message.getAction() == null) {
+                throw new IllegalArgumentException("Action is null for movie entity");
+            }
+
             // Xử lý message
             if ("movie".equals(message.getEntityType())) {
-                if (message.getAction() == null) {
-                    throw new IllegalArgumentException("Action is null");
-                }
                 handleMovieMessage(message);
             } else {
                 log.warn("Unknown entityType: {}", message.getEntityType());
@@ -52,8 +64,10 @@ public class KafkaConsumerService {
                     record.partition(), record.offset(), System.currentTimeMillis() - startTime);
         } catch (Exception e) {
             log.error("❌ Error processing message: {}. Sending to DLQ: {}", message, DLQ_TOPIC, e);
-            kafkaTemplate.send(DLQ_TOPIC, message);
-            acknowledgment.acknowledge();
+            if (message != null) {
+                kafkaTemplate.send(DLQ_TOPIC, message);
+            }
+            acknowledgment.acknowledge(); // Commit dù lỗi để tránh lặp lại
             log.debug("Committed offset after error for partition={}, offset={}, took {} ms",
                     record.partition(), record.offset(), System.currentTimeMillis() - startTime);
         }
@@ -62,11 +76,12 @@ public class KafkaConsumerService {
     protected void handleMovieMessage(KafkaMessage message) {
         String action = message.getAction();
         Long entityId = message.getEntityId();
+        Map<String, Object> payload = message.getPayload();
         long startTime = System.currentTimeMillis();
         log.info("Processing action={} for movie, entityId={}", action, entityId);
 
         try {
-            if (message.getPayload() == null && !"DELETE".equals(action)) {
+            if (payload == null && !"DELETE".equals(action)) {
                 throw new IllegalArgumentException("Payload is null for action: " + action);
             }
             if (entityId == null && ("UPDATE".equals(action) || "DELETE".equals(action) || "VIEW".equals(action))) {
@@ -76,35 +91,35 @@ public class KafkaConsumerService {
             switch (action) {
                 case "CREATE":
                     CreateMovieRequest createRequest = new CreateMovieRequest();
-                    createRequest.setTitle((String) message.getPayload().get("title"));
-                    createRequest.setType((String) message.getPayload().get("type"));
-                    createRequest.setYear((Integer) message.getPayload().get("year"));
-                    createRequest.setDuration((Integer) message.getPayload().get("duration"));
-                    createRequest.setIntro((String) message.getPayload().get("intro"));
-                    createRequest.setAgeRating((String) message.getPayload().get("ageRating"));
-                    createRequest.setViews(((Number) message.getPayload().get("views")).longValue());
-                    createRequest.setActorIds((List<Long>) message.getPayload().get("actorIds"));
-                    createRequest.setGenreNames((List<String>) message.getPayload().get("genreName"));
-                    createRequest.setCountryName((String) message.getPayload().get("countryName"));
-                    createRequest.setSmallBanner((String) message.getPayload().get("smallBanner"));
-                    createRequest.setLargeBanner((String) message.getPayload().get("largeBanner"));
+                    createRequest.setTitle(getStringFromPayload(payload, "title"));
+                    createRequest.setType(getStringFromPayload(payload, "type"));
+                    createRequest.setYear(getIntegerFromPayload(payload, "year"));
+                    createRequest.setDuration(getIntegerFromPayload(payload, "duration"));
+                    createRequest.setIntro(getStringFromPayload(payload, "intro"));
+                    createRequest.setAgeRating(getStringFromPayload(payload, "ageRating"));
+                    createRequest.setViews(getLongFromPayload(payload, "views", 0L));
+                    createRequest.setActorIds(getListLongFromPayload(payload, "actorIds"));
+                    createRequest.setGenreNames(getListStringFromPayload(payload, "genreName"));
+                    createRequest.setCountryName(getStringFromPayload(payload, "countryName"));
+                    createRequest.setSmallBanner(getStringFromPayload(payload, "smallBanner"));
+                    createRequest.setLargeBanner(getStringFromPayload(payload, "largeBanner"));
                     movieService.createMovie(createRequest);
                     break;
 
                 case "UPDATE":
                     UpdateMovieRequest updateRequest = new UpdateMovieRequest();
-                    updateRequest.setTitle((String) message.getPayload().get("title"));
-                    updateRequest.setType((String) message.getPayload().get("type"));
-                    updateRequest.setYear((Integer) message.getPayload().get("year"));
-                    updateRequest.setDuration((Integer) message.getPayload().get("duration"));
-                    updateRequest.setIntro((String) message.getPayload().get("intro"));
-                    updateRequest.setAgeRating((String) message.getPayload().get("ageRating"));
-                    updateRequest.setViews(((Number) message.getPayload().get("views")).longValue());
-                    updateRequest.setActorIds((List<Long>) message.getPayload().get("actorIds"));
-                    updateRequest.setGenreNames((List<String>) message.getPayload().get("genreName"));
-                    updateRequest.setCountryName((String) message.getPayload().get("countryName"));
-                    updateRequest.setSmallBanner((String) message.getPayload().get("smallBanner"));
-                    updateRequest.setLargeBanner((String) message.getPayload().get("largeBanner"));
+                    updateRequest.setTitle(getStringFromPayload(payload, "title"));
+                    updateRequest.setType(getStringFromPayload(payload, "type"));
+                    updateRequest.setYear(getIntegerFromPayload(payload, "year"));
+                    updateRequest.setDuration(getIntegerFromPayload(payload, "duration"));
+                    updateRequest.setIntro(getStringFromPayload(payload, "intro"));
+                    updateRequest.setAgeRating(getStringFromPayload(payload, "ageRating"));
+                    updateRequest.setViews(getLongFromPayload(payload, "views", 0L));
+                    updateRequest.setActorIds(getListLongFromPayload(payload, "actorIds"));
+                    updateRequest.setGenreNames(getListStringFromPayload(payload, "genreName"));
+                    updateRequest.setCountryName(getStringFromPayload(payload, "countryName"));
+                    updateRequest.setSmallBanner(getStringFromPayload(payload, "smallBanner"));
+                    updateRequest.setLargeBanner(getStringFromPayload(payload, "largeBanner"));
                     movieService.updateMovie(entityId, updateRequest);
                     break;
 
@@ -126,5 +141,28 @@ public class KafkaConsumerService {
                     action, entityId, e.getMessage(), e);
             throw e; // Để transaction rollback
         }
+    }
+
+    // Helper methods to safely get values from payload
+    private String getStringFromPayload(Map<String, Object> payload, String key) {
+        return payload != null && payload.containsKey(key) ? String.valueOf(payload.get(key)) : null;
+    }
+
+    private Integer getIntegerFromPayload(Map<String, Object> payload, String key) {
+        return payload != null && payload.containsKey(key) ? ((Number) payload.get(key)).intValue() : null;
+    }
+
+    private Long getLongFromPayload(Map<String, Object> payload, String key, Long defaultValue) {
+        return payload != null && payload.containsKey(key) ? ((Number) payload.get(key)).longValue() : defaultValue;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Long> getListLongFromPayload(Map<String, Object> payload, String key) {
+        return payload != null && payload.containsKey(key) ? (List<Long>) payload.get(key) : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> getListStringFromPayload(Map<String, Object> payload, String key) {
+        return payload != null && payload.containsKey(key) ? (List<String>) payload.get(key) : null;
     }
 }

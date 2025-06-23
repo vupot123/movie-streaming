@@ -7,6 +7,8 @@ import com.example.movie_streaming.movieService.model.dto.request.UpdateFeatured
 import com.example.movie_streaming.movieService.model.dto.response.CollectionResponse;
 import com.example.movie_streaming.movieService.service.CollectionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,9 +22,9 @@ public class CollectionController {
     private final CollectionService collectionService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CollectionResponse>>> getAllCollections() {
-        List<CollectionResponse> collections = collectionService.getAllCollections();
-        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched full successfully", collections));
+    public ResponseEntity<ApiResponse<Page<CollectionResponse>>> getAllCollections(Pageable pageable) {
+        Page<CollectionResponse> collections = collectionService.getAllCollections(pageable);
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched successfully", collections));
     }
 
     @PostMapping
@@ -63,14 +65,14 @@ public class CollectionController {
     }
 
     @GetMapping("/featured")
-    public ResponseEntity<ApiResponse<List<CollectionResponse>>> getFeaturedCollections() {
-        List<CollectionResponse> collections = collectionService.getFeaturedCollections();
+    public ResponseEntity<ApiResponse<Page<CollectionResponse>>> getFeaturedCollections(Pageable pageable) {
+        Page<CollectionResponse> collections = collectionService.getFeaturedCollections(pageable);
         return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched featured successfully", collections));
     }
 
     @GetMapping("/not-featured")
-    public ResponseEntity<ApiResponse<List<CollectionResponse>>> getNotFeaturedCollections() {
-        List<CollectionResponse> collections = collectionService.getNotFeaturedCollections();
+    public ResponseEntity<ApiResponse<Page<CollectionResponse>>> getNotFeaturedCollections(Pageable pageable) {
+        Page<CollectionResponse> collections = collectionService.getNotFeaturedCollections(pageable);
         return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched non-featured successfully", collections));
     }
 
@@ -83,9 +85,8 @@ public class CollectionController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<List<CollectionResponse>>> searchByName(@RequestParam("keyword") String keyword) {
-        List<CollectionResponse> results = collectionService.searchByName(keyword);
+    public ResponseEntity<ApiResponse<Page<CollectionResponse>>> searchByName(@RequestParam("keyword") String keyword, Pageable pageable) {
+        Page<CollectionResponse> results = collectionService.searchByName(keyword, pageable);
         return ResponseEntity.ok(ApiResponse.success(200, "Collection searched successfully", results));
     }
-
 }

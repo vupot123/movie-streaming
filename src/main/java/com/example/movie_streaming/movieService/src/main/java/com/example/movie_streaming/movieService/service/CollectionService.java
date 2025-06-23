@@ -7,17 +7,24 @@ import com.example.movie_streaming.movieService.model.dto.request.CreateCollecti
 import com.example.movie_streaming.movieService.model.dto.request.UpdateCollectionRequest;
 import com.example.movie_streaming.movieService.model.dto.request.UpdateFeaturedCollectionRequest;
 import com.example.movie_streaming.movieService.model.dto.response.CollectionResponse;
-import com.example.movie_streaming.movieService.model.entity.*;
 import com.example.movie_streaming.movieService.model.entity.Collection;
+import com.example.movie_streaming.movieService.model.entity.CollectionMovie;
+import com.example.movie_streaming.movieService.model.entity.CollectionMovieId;
+import com.example.movie_streaming.movieService.model.entity.Movie;
 import com.example.movie_streaming.movieService.repository.CollectionMovieRepository;
 import com.example.movie_streaming.movieService.repository.CollectionRepository;
 import com.example.movie_streaming.movieService.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -32,22 +39,17 @@ public class CollectionService {
     private final KafkaProducerService kafkaProducerService;
 
     @Transactional(readOnly = true)
-    public List<CollectionResponse> getAllCollections() {
-        return collectionRepo.findAll().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<CollectionResponse> getAllCollections(Pageable pageable) {
+        return collectionRepo.findAll(pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<CollectionResponse> searchByName(String keyword) {
+    public Page<CollectionResponse> searchByName(String keyword, Pageable pageable) {
         if (keyword == null || keyword.trim().isBlank()) {
             throw new IllegalArgumentException("Search keyword cannot be empty");
         }
-
-        List<Collection> collections = collectionRepo.findByNameContainingIgnoreCase(keyword.trim());
-        return collections.stream().map(this::toResponse).collect(Collectors.toList());
+        return collectionRepo.findByNameContainingIgnoreCase(keyword.trim(), pageable).map(this::toResponse);
     }
-
 
     @Transactional
     public CollectionResponse createCollection(CreateCollectionRequest request) {
@@ -115,7 +117,7 @@ public class CollectionService {
 
         // Cập nhật danh sách phim
         if (request.getMovieIds() != null) {
-            collectionMovieRepo.deleteByCollectionId(id); // Xoá hết phim cũ
+            collectionMovieRepo.deleteByCollectionId(id); // Xóa hết phim cũ
 
             for (Long movieId : request.getMovieIds()) {
                 Movie movie = movieRepo.findById(movieId)
@@ -138,17 +140,14 @@ public class CollectionService {
         return toResponse(updated);
     }
 
-
-    public List<CollectionResponse> getFeaturedCollections() {
-        return collectionRepo.findByFeaturedTrue().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public Page<CollectionResponse> getFeaturedCollections(Pageable pageable) {
+        return collectionRepo.findByFeaturedTrue(pageable).map(this::toResponse);
     }
 
-    public List<CollectionResponse> getNotFeaturedCollections() {
-        return collectionRepo.findByFeaturedFalse().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public Page<CollectionResponse> getNotFeaturedCollections(Pageable pageable) {
+        return collectionRepo.findByFeaturedFalse(pageable).map(this::toResponse);
     }
 
     @Transactional
@@ -180,7 +179,6 @@ public class CollectionService {
         }
     }
 
-
     @Transactional
     public void removeMovieFromCollection(Long collectionId, Long movieId) {
         CollectionMovieId id = new CollectionMovieId(collectionId, movieId);
@@ -193,7 +191,6 @@ public class CollectionService {
             kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("collection", "REMOVE_MOVIE", null, payload));
         }
     }
-
 
     private CollectionResponse toResponse(Collection collection) {
         List<CollectionMovie> collectionMovies = collectionMovieRepo.findAllByCollectionId(collection.getId());

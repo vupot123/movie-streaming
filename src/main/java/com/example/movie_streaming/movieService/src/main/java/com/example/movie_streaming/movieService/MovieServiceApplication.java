@@ -5,9 +5,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.kafka.annotation.EnableKafka;
 
 @SpringBootApplication(scanBasePackages = "com.example.movie_streaming")
 @EnableConfigurationProperties(JwtProperties.class)
+@EnableKafka
 public class MovieServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(MovieServiceApplication.class, args);
