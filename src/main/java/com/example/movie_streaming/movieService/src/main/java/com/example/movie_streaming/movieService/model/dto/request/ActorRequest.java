@@ -13,6 +13,6 @@ public class ActorRequest {
     private String name;
     private String gender; // "male", "female", "other"
     private LocalDate dob;
-    //private String avatarUrl;
+    private String avatarUrl;
     private String bio;
 }

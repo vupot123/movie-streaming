@@ -51,7 +51,7 @@ public class ActorService {
 
     @Transactional
     public ActorResponse create(ActorRequest request) {
-        Actor actor = movieMapper.toActorEntity(request);
+        Actor actor = movieMapper.toActorEntity(request); // Giả sử movieMapper hỗ trợ ánh xạ
         Actor saved = actorRepository.save(actor);
 
         Map<String, Object> payload = new HashMap<>();
@@ -72,32 +72,24 @@ public class ActorService {
         Actor actor = actorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Not found actor ID: " + id));
 
-        Map<String, Object> changes = new HashMap<>();
-        if (request.getName() != null) {
-            actor.setName(request.getName());
-            changes.put("updatedName", request.getName());
-        }
-        if (request.getDob() != null) {
-            actor.setDob(request.getDob());
-            changes.put("updatedDob", request.getDob());
-        }
-        if (request.getBio() != null) {
-            actor.setBio(request.getBio());
-            changes.put("updatedBio", request.getBio());
-        }
-        if (request.getGender() != null) {
-            actor.setGender(Gender.valueOf(request.getGender().toUpperCase()));
-            changes.put("updatedGender", request.getGender().toUpperCase());
-        }
+        // Ánh xạ toàn bộ từ ActorRequest vào Actor hiện tại
+        Actor updatedActor = actorMapper.updateActorFromRequest(actor, request);
 
-        Actor updated = actorRepository.save(actor);
+        // Lưu thay đổi
+        Actor savedActor = actorRepository.save(updatedActor);
 
-        if (!changes.isEmpty()) {
-            changes.put("actorId", updated.getId());
-            kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("actor", "UPDATE", updated.getId(), changes));
-        }
+        // Chuẩn bị payload Kafka với toàn bộ trạng thái mới
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("actorId", savedActor.getId());
+        payload.put("name", savedActor.getName());
+        payload.put("dob", savedActor.getDob());
+        payload.put("gender", savedActor.getGender() != null ? savedActor.getGender().name() : null);
+        payload.put("bio", savedActor.getBio());
+        payload.put("avatarUrl", savedActor.getAvatarUrl());
 
-        return actorMapper.toResponse(updated);
+        kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("actor", "UPDATE", savedActor.getId(), payload));
+
+        return actorMapper.toResponse(savedActor);
     }
 
     @Transactional
@@ -117,24 +109,5 @@ public class ActorService {
         Map<String, Object> payload = new HashMap<>();
         payload.put("actorId", id);
         kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("actor", "DELETE", id, payload));
-    }
-
-    private ActorResponse toResponse(Actor actor) {
-        List<Long> movieIds = actor.getMovieActors() != null
-                ? actor.getMovieActors().stream()
-                .map(ma -> ma.getMovie().getId())
-                .distinct()
-                .toList()
-                : List.of();
-
-        return new ActorResponse(
-                actor.getId(),
-                actor.getName(),
-                actor.getGender() != null ? actor.getGender().name() : null,
-                actor.getDob(),
-                actor.getAvatarUrl(),
-                actor.getBio(),
-                movieIds
-        );
     }
 }
