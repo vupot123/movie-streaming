@@ -34,7 +34,7 @@ public class KafkaConfig {
     @Bean
     public ProducerFactory<String, String> producerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "10.148.0.5:9093");
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "34.143.190.179:9093");
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.ACKS_CONFIG, "all"); // Đảm bảo tất cả broker xác nhận
@@ -63,7 +63,7 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "10.148.0.5:9093");
+        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "34.143.190.179:9093");
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, "file-uploaded-group");
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
