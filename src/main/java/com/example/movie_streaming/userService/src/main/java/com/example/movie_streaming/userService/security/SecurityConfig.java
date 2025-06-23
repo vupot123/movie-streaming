@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // Import BCryptPasswordEncoder
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,6 +30,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(); // Khai báo bean BCryptPasswordEncoder
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Bật CORS
@@ -36,6 +42,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Cho phép truy cập không cần xác thực cho các endpoint userService
                         .requestMatchers("/api/user/register", "/api/user/login").permitAll()
+                        // Cấp quyền cho USER và ADMIN truy cập các endpoint mới
+                        .requestMatchers(HttpMethod.GET, "/api/user/favorites").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/user/detail").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/user").hasAnyRole("USER", "ADMIN") // Cập nhật thông tin user
+                        .requestMatchers(HttpMethod.POST, "/api/user/views").hasAnyRole("USER", "ADMIN") // Ghi lại lượt xem
+                        .requestMatchers(HttpMethod.GET, "/api/user/me").hasAnyRole("USER", "ADMIN") // Lấy thông tin cá nhân
                         // Bảo vệ các endpoint streamService yêu cầu vai trò ADMIN
                         .requestMatchers(HttpMethod.POST, "/api/upload/file").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/upload/file").hasRole("ADMIN")
@@ -50,6 +62,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

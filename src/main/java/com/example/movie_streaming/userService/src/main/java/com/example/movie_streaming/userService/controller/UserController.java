@@ -3,6 +3,7 @@ package com.example.movie_streaming.userService.controller;
 import com.example.movie_streaming.userService.model.dto.request.FavoriteRequest;
 import com.example.movie_streaming.userService.model.dto.request.RegisterRequest;
 import com.example.movie_streaming.userService.model.dto.request.LoginRequest;
+import com.example.movie_streaming.userService.model.dto.request.UpdateUserRequest;
 import com.example.movie_streaming.common.response.ApiResponse;
 import com.example.movie_streaming.userService.model.dto.response.JwtResponse;
 import com.example.movie_streaming.userService.service.UserService;
@@ -14,11 +15,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -110,12 +113,15 @@ public class UserController {
     }
 
     @GetMapping("/favorites")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getFavorites(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<Page<Map<String, Object>>>> getFavorites(
+            HttpServletRequest request,
+            @PageableDefault(size = 10, page = 0) Pageable pageable) {
         try {
-            logger.debug("Yêu cầu lấy danh sách phim yêu thích");
+            logger.debug("Yêu cầu lấy danh sách phim yêu thích với phân trang");
             String username = extractUsernameFromRequest(request);
-            List<Map<String, Object>> favorites = userService.getFavorites(username);
-            logger.info("Lấy danh sách phim yêu thích thành công cho username: {}, số lượng: {}", username, favorites.size());
+            Page<Map<String, Object>> favorites = userService.getFavorites(username, pageable);
+            logger.info("Lấy danh sách phim yêu thích thành công cho username: {}, trang: {}, kích thước: {}",
+                    username, pageable.getPageNumber(), pageable.getPageSize());
             return ResponseEntity.ok(new ApiResponse<>(200, "Lấy danh sách phim yêu thích thành công", favorites));
         } catch (InvalidCredentialsException e) {
             logger.warn("Lỗi lấy danh sách phim yêu thích: {}", e.getMessage());
@@ -125,6 +131,51 @@ public class UserController {
             return ResponseEntity.status(404).body(new ApiResponse<>(404, e.getMessage(), null));
         } catch (Exception e) {
             logger.error("Lỗi không xác định khi lấy danh sách phim yêu thích", e);
+            return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
+        }
+    }
+
+    @GetMapping("/detail")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getUserDetail(
+            HttpServletRequest request,
+            @PageableDefault(size = 10, page = 0) Pageable pageable) {
+        try {
+            logger.debug("Yêu cầu lấy thông tin chi tiết người dùng với phân trang");
+            String username = extractUsernameFromRequest(request);
+            Map<String, Object> userDetail = userService.getUserDetail(username, pageable);
+            logger.info("Lấy thông tin chi tiết thành công cho username: {}", username);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Lấy thông tin chi tiết người dùng thành công", userDetail));
+        } catch (InvalidCredentialsException e) {
+            logger.warn("Lỗi lấy thông tin chi tiết: {}", e.getMessage());
+            return ResponseEntity.status(401).body(new ApiResponse<>(401, e.getMessage(), null));
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Lỗi lấy thông tin chi tiết: {}", e.getMessage());
+            return ResponseEntity.status(404).body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Lỗi không xác định khi lấy thông tin chi tiết", e);
+            return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
+        }
+    }
+
+    @PutMapping
+    public ResponseEntity<ApiResponse<String>> updateUser(HttpServletRequest request, @Valid @RequestBody UpdateUserRequest updateRequest) {
+        try {
+            logger.debug("Yêu cầu cập nhật thông tin người dùng");
+            String username = extractUsernameFromRequest(request);
+            userService.updateUser(username, updateRequest);
+            logger.info("Cập nhật thông tin thành công cho username: {}", username);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Cập nhật thông tin người dùng thành công", null));
+        } catch (InvalidCredentialsException e) {
+            logger.warn("Lỗi cập nhật thông tin: {}", e.getMessage());
+            return ResponseEntity.status(401).body(new ApiResponse<>(401, e.getMessage(), null));
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Lỗi cập nhật thông tin: {}", e.getMessage());
+            return ResponseEntity.status(404).body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (DuplicateResourceException e) {
+            logger.warn("Lỗi cập nhật thông tin: Email đã tồn tại", e.getMessage());
+            return ResponseEntity.status(409).body(new ApiResponse<>(409, e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Lỗi không xác định khi cập nhật thông tin người dùng", e);
             return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
         }
     }
@@ -157,11 +208,6 @@ public class UserController {
         }
     }
 
-    /**
-     * Lấy thông tin của người dùng hiện tại
-     * @param request Yêu cầu HTTP để trích xuất token
-     * @return ResponseEntity chứa thông tin người dùng
-     */
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMe(HttpServletRequest request) {
         try {
