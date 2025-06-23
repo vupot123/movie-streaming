@@ -1,16 +1,16 @@
 package com.example.movie_streaming.movieService.controller;
 
 import com.example.movie_streaming.common.response.ApiResponse;
+import com.example.movie_streaming.common.exceptions.ResourceNotFoundException;
 import com.example.movie_streaming.movieService.model.dto.request.ActorRequest;
 import com.example.movie_streaming.movieService.model.dto.response.ActorResponse;
 import com.example.movie_streaming.movieService.service.ActorService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/actors")
@@ -25,33 +25,63 @@ public class ActorController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword
     ) {
-        Page<ActorResponse> result = (keyword == null || keyword.trim().isEmpty())
-                ? actorService.getAllActors(PageRequest.of(page, size))
-                : actorService.search(keyword.trim(), PageRequest.of(page, size));
-
-        return ResponseEntity.ok(ApiResponse.success(200, "Actors fetched successfully", result));
+        try {
+            Page<ActorResponse> result = actorService.getAllActors(PageRequest.of(page, size), keyword);
+            return ResponseEntity.ok(ApiResponse.success(200, "Actors fetched successfully", result));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.success(500, "Failed to fetch actors: " + e.getMessage(), null));
+        }
     }
-
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ActorResponse>> getById(@PathVariable("id") Long id) {
-        return ResponseEntity.ok(ApiResponse.success(200, "Actor fetched successfully", actorService.getById(id)));
+        try {
+            return ResponseEntity.ok(ApiResponse.success(200, "Actor fetched successfully", actorService.getById(id)));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.success(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.success(500, "Failed to fetch actor: " + e.getMessage(), null));
+        }
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<ActorResponse>> create(@RequestBody ActorRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(200, "Actor created successfully", actorService.create(request)));
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success(201, "Actor created successfully", actorService.create(request)));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.success(500, "Failed to create actor: " + e.getMessage(), null));
+        }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ActorResponse>> update(@PathVariable("id") Long id, @RequestBody ActorRequest request) {
-        return ResponseEntity.ok(ApiResponse.success(200, "Actor updated successfully", actorService.update(id, request)));
+        try {
+            return ResponseEntity.ok(ApiResponse.success(200, "Actor updated successfully", actorService.update(id, request)));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.success(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.success(500, "Failed to update actor: " + e.getMessage(), null));
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable("id") Long id) {
-        actorService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success(200, "Actor deleted successfully", null));
+        try {
+            actorService.delete(id);
+            return ResponseEntity.ok(ApiResponse.success(200, "Actor deleted successfully", null));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.success(404, e.getMessage(), null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.success(500, "Failed to delete actor: " + e.getMessage(), null));
+        }
     }
-
 }

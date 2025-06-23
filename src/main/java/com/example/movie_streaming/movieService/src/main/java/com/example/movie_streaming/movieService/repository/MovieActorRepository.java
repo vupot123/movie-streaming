@@ -14,4 +14,12 @@ public interface MovieActorRepository extends JpaRepository<MovieActor, MovieAct
     @Modifying
     @Query("DELETE FROM MovieActor ma WHERE ma.movie.id = :movieId")
     void deleteByMovieId(Long movieId);
+
+
+    List<MovieActor> findByActorId(Long actorId);
+
+
+    @Modifying
+    @Query("DELETE FROM MovieActor ma WHERE ma.actor.id = :actorId")
+    void deleteByActorId(Long actorId);
 }
