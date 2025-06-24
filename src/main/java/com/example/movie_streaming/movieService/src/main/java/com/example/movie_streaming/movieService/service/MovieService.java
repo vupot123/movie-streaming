@@ -120,6 +120,7 @@ public class MovieService {
 
         Movie movie = Movie.builder()
                 .title(request.getTitle().trim())
+                .subtitle(request.getSubtitle() != null ? request.getSubtitle().trim() : null)
                 .type(MovieType.fromString(request.getType()))
                 .year(request.getYear())
                 .duration(request.getDuration())
@@ -195,7 +196,6 @@ public class MovieService {
         return movieMapper.toResponse(savedMovie);
     }
 
-
     @Transactional
     public MovieResponse updateMovie(Long id, UpdateMovieRequest request) {
         if (id == null || id <= 0) {
@@ -205,6 +205,7 @@ public class MovieService {
         Movie movie = movieRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim với ID: " + id));
 
+        // Kiểm tra trùng tiêu đề
         if (request.getTitle() != null && !request.getTitle().trim().equalsIgnoreCase(movie.getTitle())) {
             String normalizedTitle = request.getTitle().trim().toLowerCase();
             if (movieRepository.existsByTitleIgnoreCaseAndIdNot(normalizedTitle, id)) {
@@ -212,6 +213,7 @@ public class MovieService {
             }
         }
 
+        // Xử lý diễn viên mới
         List<Long> newActorIds = new ArrayList<>();
         if (request.getNewActors() != null && !request.getNewActors().isEmpty()) {
             List<Actor> newActors = request.getNewActors().stream()
@@ -221,12 +223,13 @@ public class MovieService {
             newActorIds = newActors.stream().map(Actor::getId).toList();
         }
 
-        Set<Long> allActorIds = newActorIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        // Tổng hợp tất cả actorIds
+        Set<Long> allActorIds = new HashSet<>(newActorIds);
         if (request.getActorIds() != null) {
             allActorIds.addAll(request.getActorIds().stream().filter(Objects::nonNull).toList());
         }
 
-        // Convert genreName to genreIds
+        // Chuyển genreName sang genreId
         List<Integer> genreIds = new ArrayList<>();
         if (request.getGenreNames() != null) {
             for (String name : request.getGenreNames()) {
@@ -238,7 +241,7 @@ public class MovieService {
             }
         }
 
-        // Convert countryName to countryId
+        // Lấy countryId từ countryName
         Integer countryId = null;
         if (request.getCountryName() != null) {
             countryId = countryRepository.findByNameIgnoreCase(request.getCountryName().trim())
@@ -246,18 +249,65 @@ public class MovieService {
                     .orElseThrow(() -> new IllegalArgumentException("Quốc gia không tồn tại: " + request.getCountryName()));
         }
 
+        // Xoá liên kết cũ
         deleteMovieRelations(id);
 
+        // Lưu lại các liên kết chính
         saveMovieRelations(movie, new ArrayList<>(allActorIds), genreIds, countryId,
                 request.getSmallBanner(), request.getLargeBanner());
 
+        // 🔁 Lưu lại collections mới
+        if (request.getCollections() != null && !request.getCollections().isEmpty()) {
+            List<CollectionMovie> collectionMovies = request.getCollections().stream()
+                    .distinct()
+                    .map(cid -> {
+                        Collection collection = new Collection();
+                        collection.setId(cid);
+                        return new CollectionMovie(new CollectionMovieId(movie.getId(), cid), collection, movie);
+                    })
+                    .toList();
+            collectionMovieRepository.saveAll(collectionMovies);
+        }
+
+        // 🔁 Lưu lại seasons + episodes mới
+        if (request.getSeasons() != null && !request.getSeasons().isEmpty()) {
+            for (CreateSeasonRequest s : request.getSeasons()) {
+                Season season = Season.builder()
+                        .movie(movie)
+                        .seasonNumber(s.getSeasonNumber())
+                        .name(s.getName())
+                        .build();
+                Season savedSeason = seasonRepository.save(season);
+
+                if (s.getEpisodes() != null) {
+                    List<Episode> episodes = s.getEpisodes().stream()
+                            .map(e -> Episode.builder()
+                                    .season(savedSeason)
+                                    .episodeNumber(e.getEpisodeNumber())
+                                    .dubbedUrl(e.getDubbed())
+                                    .subtitleUrl(e.getSubbed())
+                                    .build())
+                            .toList();
+                    episodeRepository.saveAll(episodes);
+                }
+            }
+        }
+
+        // Cập nhật các trường đơn
         updateMovieFields(movie, request);
-        Movie updatedMovie = movieRepository.save(movie);
+        movieRepository.save(movie);
+
+        // 🔁 Load lại movie sau khi đã lưu toàn bộ quan hệ
+        Movie updatedMovie = movieRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim sau khi cập nhật: " + id));
+
+        initializeMovie(updatedMovie); // 👉 đảm bảo các quan hệ (season -> episodes) được Hibernate load đầy đủ
 
         kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "UPDATE", id,
                 KafkaPayloadBuilder.buildUpdatePayload(updatedMovie, request)));
 
-        return movieMapper.toResponse(updatedMovie);
+        return movieMapper.toResponse(updatedMovie); // response sẽ chứa đầy đủ tập phim
+
     }
 
 
@@ -309,15 +359,24 @@ public class MovieService {
 
     private void initializeMovie(Movie movie) {
         Hibernate.initialize(movie.getSeasons());
-        movie.getSeasons().forEach(season -> Hibernate.initialize(season.getEpisodes()));
+        movie.getSeasons().forEach(season -> Hibernate.initialize(season.getEpisodes())); // 👉 Load tập phim
+
         Hibernate.initialize(movie.getTrailers());
         Hibernate.initialize(movie.getBanner());
-        Hibernate.initialize(movie.getMovieActors());
+
+        Hibernate.initialize(movie.getMovieActors()); // 👉 Load actor
         movie.getMovieActors().forEach(ma -> Hibernate.initialize(ma.getActor()));
-        Hibernate.initialize(movie.getMovieGenres());
+
+        Hibernate.initialize(movie.getMovieGenres()); // 👉 Load genre
         movie.getMovieGenres().forEach(mg -> Hibernate.initialize(mg.getGenre()));
+
         Hibernate.initialize(movie.getCountry());
+
+        Hibernate.initialize(movie.getCollectionMovies()); // 👉 Load collections
+        movie.getCollectionMovies().forEach(cm -> Hibernate.initialize(cm.getCollection()));
     }
+
+
 
     private boolean updateMovieFields(Movie movie, UpdateMovieRequest request) {
         boolean updated = false;

@@ -12,7 +12,7 @@ import java.util.List;
 public class CollectionResponse {
     private Long id;
     private String name;
-    private String description;
+    //private String description;
     private Boolean featured;
     private List<Long> movieIDs;
 }
