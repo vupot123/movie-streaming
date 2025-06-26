@@ -6,6 +6,7 @@ import com.example.movie_streaming.userService.kafka.KafkaProducerService;
 import com.example.movie_streaming.userService.model.dto.request.FavoriteRequest;
 import com.example.movie_streaming.userService.model.dto.request.LoginRequest;
 import com.example.movie_streaming.userService.model.dto.request.RegisterRequest;
+import com.example.movie_streaming.userService.model.dto.request.UpdateUserRequest;
 import com.example.movie_streaming.userService.model.dto.response.JwtResponse;
 import com.example.movie_streaming.userService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.userService.model.entity.Favorite;
@@ -21,16 +22,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -45,77 +44,66 @@ public class UserService {
     private final MovieClient movieClient;
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     public void register(@Valid RegisterRequest request) {
-        logger.debug("Đang đăng ký người dùng: {}", request.getUsername());
+        logger.debug("Bắt đầu đăng ký người dùng: {}", request.getUsername());
 
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            logger.warn("Username {} đã tồn tại", request.getUsername());
-            throw new DuplicateResourceException("Username đã tồn tại");
+            logger.warn("Username '{}' đã tồn tại", request.getUsername());
+            throw new DuplicateResourceException("Username đã được sử dụng");
         }
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            logger.warn("Email {} đã tồn tại", request.getEmail());
-            throw new DuplicateResourceException("Email đã tồn tại");
+            logger.warn("Email '{}' đã tồn tại", request.getEmail());
+            throw new DuplicateResourceException("Email đã được sử dụng");
         }
 
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
-                .password(new BCryptPasswordEncoder().encode(request.getPassword()))
+                .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
+                .gender(request.getGender() != null ? User.Gender.valueOf(request.getGender().toUpperCase()) : null)
+                .avatar(request.getAvatar())
                 .role(1)
                 .createdAt(LocalDateTime.now())
                 .build();
         userRepository.save(user);
-        logger.info("Đăng ký người dùng thành công: {}", user.getUsername());
+        logger.info("Đăng ký thành công cho người dùng: {}", user.getUsername());
 
-        Map<String, Object> payload = Map.of(
-                "username", user.getUsername(),
-                "email", user.getEmail()
-        );
+        Map<String, Object> payload = Map.of("username", user.getUsername(), "email", user.getEmail());
         KafkaMessage kafkaMessage = new KafkaMessage("user", "REGISTER", user.getId(), payload);
 
         try {
             String messageJson = objectMapper.writeValueAsString(kafkaMessage);
             kafkaProducerService.sendMessage("user-registration", messageJson);
-            logger.debug("Đã gửi tin nhắn Kafka cho đăng ký người dùng: {}", messageJson);
+            logger.debug("Gửi tin nhắn Kafka thành công cho đăng ký: {}", messageJson);
         } catch (Exception e) {
-            logger.error("Lỗi khi gửi tin nhắn Kafka cho người dùng: {}", user.getUsername(), e);
+            logger.error("Lỗi khi gửi tin nhắn Kafka cho người dùng '{}': {}", user.getUsername(), e.getMessage());
         }
     }
 
     public JwtResponse login(@Valid LoginRequest request) {
-        logger.debug("Đang đăng nhập người dùng: {}", request.getUsername());
+        logger.debug("Bắt đầu đăng nhập cho người dùng: {}", request.getUsername());
 
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> {
                     logger.warn("Không tìm thấy người dùng: {}", request.getUsername());
-                    return new ResourceNotFoundException("Không tìm thấy người dùng");
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
                 });
 
-        if (!new BCryptPasswordEncoder().matches(request.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             logger.warn("Thông tin đăng nhập không hợp lệ cho người dùng: {}", request.getUsername());
-            throw new InvalidCredentialsException("Thông tin đăng nhập không hợp lệ");
+            throw new InvalidCredentialsException("Mật khẩu không đúng");
         }
 
-        String role;
-        if (user.getRole() == 0) {
-            role = "ADMIN";
-            logger.debug("Người dùng {} được xác định là ADMIN", request.getUsername());
-        } else if (user.getRole() == 1) {
-            role = "USER";
-            logger.debug("Người dùng {} được xác định là USER", request.getUsername());
-        } else {
-            logger.warn("Vai trò không hợp lệ cho người dùng: {}, sử dụng USER làm mặc định", request.getUsername());
-            role = "USER";
-        }
+        String role = user.getRole() == 0 ? "ADMIN" : "USER";
+        logger.debug("Xác định vai trò '{}' cho người dùng: {}", role, request.getUsername());
 
-        // Truyền cả username và role vào generateToken
         String token = jwtProvider.generateToken(user.getUsername(), role);
         logger.info("Đăng nhập thành công cho người dùng: {}, vai trò: {}", user.getUsername(), role);
-        return new JwtResponse(role, user.getUsername(), token);
+        return new JwtResponse(role, token);
     }
 
     public void addFavorite(String username, @Valid FavoriteRequest request) {
@@ -124,65 +112,201 @@ public class UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> {
                     logger.warn("Không tìm thấy người dùng: {}", username);
-                    return new ResourceNotFoundException("Không tìm thấy người dùng");
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
                 });
 
         MovieResponse movie = movieClient.getMovieById(request.getMovieId());
         if (movie == null) {
-            logger.warn("Không tìm thấy phim với ID: {}", request.getMovieId());
-            throw new ResourceNotFoundException("Không tìm thấy phim");
+            logger.warn("Không tìm thấy phim với ID: {} từ movie-service", request.getMovieId());
+            throw new ResourceNotFoundException("Phim không tồn tại");
         }
 
         if (favoriteRepository.findByUserAndMovieId(user, request.getMovieId()).isPresent()) {
-            logger.warn("Phim với ID {} đã có trong danh sách yêu thích của người dùng: {}", request.getMovieId(), username);
-            throw new DuplicateResourceException("Phim đã có trong danh sách yêu thích");
+            logger.warn("Phim với ID {} đã tồn tại trong danh sách yêu thích của: {}", request.getMovieId(), username);
+            throw new DuplicateResourceException("Phim đã được thêm vào danh sách yêu thích");
         }
 
         Favorite favorite = Favorite.builder()
-                .userId(user.getId()) // Thiết lập userId
-                .user(user) // Thiết lập user để duy trì mối quan hệ
+                .userId(user.getId())
+                .user(user)
                 .movieId(movie.getId())
                 .createdAt(LocalDateTime.now())
                 .build();
-
         favoriteRepository.save(favorite);
-        logger.info("Đã thêm phim yêu thích cho người dùng: {}, movieId: {}", username, movie.getId());
+        logger.info("Thêm phim yêu thích thành công cho người dùng: {}, movieId: {}", username, movie.getId());
 
-        Map<String, Object> payload = Map.of(
-                "userId", user.getId(),
-                "movieId", movie.getId()
-        );
+        Map<String, Object> payload = Map.of("userId", user.getId(), "movieId", movie.getId());
         KafkaMessage kafkaMessage = new KafkaMessage("favorite", "ADD", user.getId(), payload);
 
         try {
             String messageJson = objectMapper.writeValueAsString(kafkaMessage);
             kafkaProducerService.sendMessage("favorite-events", messageJson);
-            logger.debug("Đã gửi tin nhắn Kafka cho sự kiện thêm yêu thích: {}", messageJson);
+            logger.debug("Gửi tin nhắn Kafka thành công cho sự kiện thêm yêu thích: {}", messageJson);
         } catch (Exception e) {
             logger.error("Lỗi khi gửi tin nhắn Kafka cho sự kiện yêu thích: user={}, movieId={}", username, movie.getId(), e);
         }
     }
 
-    public List<Map<String, Object>> getFavorites(String username) {
-        logger.debug("Lấy danh sách phim yêu thích cho người dùng: {}", username);
+    public void removeFavorite(String username, Long movieId) {
+        logger.debug("Xóa phim yêu thích cho người dùng: {}, movieId: {}", username, movieId);
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> {
                     logger.warn("Không tìm thấy người dùng: {}", username);
-                    return new ResourceNotFoundException("Không tìm thấy người dùng");
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
                 });
 
-        List<Favorite> favorites = favoriteRepository.findByUser(user);
-        logger.info("Đã lấy được {} phim yêu thích cho người dùng: {}", favorites.size(), username);
+        Favorite favorite = favoriteRepository.findByUserAndMovieId(user, movieId)
+                .orElseThrow(() -> {
+                    logger.warn("Phim với ID {} không tồn tại trong danh sách yêu thích của: {}", movieId, username);
+                    return new ResourceNotFoundException("Phim không có trong danh sách yêu thích");
+                });
 
-        return favorites.stream().map(favorite -> {
-            MovieResponse movie = movieClient.getMovieById(favorite.getMovieId());
+        favoriteRepository.delete(favorite);
+        logger.info("Xóa phim yêu thích thành công cho người dùng: {}, movieId: {}", username, movieId);
+
+        Map<String, Object> payload = Map.of("userId", user.getId(), "movieId", movieId);
+        KafkaMessage kafkaMessage = new KafkaMessage("favorite", "REMOVE", user.getId(), payload);
+
+        try {
+            String messageJson = objectMapper.writeValueAsString(kafkaMessage);
+            kafkaProducerService.sendMessage("favorite-events", messageJson);
+            logger.debug("Gửi tin nhắn Kafka thành công cho sự kiện xóa yêu thích: {}", messageJson);
+        } catch (Exception e) {
+            logger.error("Lỗi khi gửi tin nhắn Kafka cho sự kiện xóa yêu thích: user={}, movieId={}", username, movieId, e);
+        }
+    }
+
+    public Page<Map<String, Object>> getFavorites(String username, Pageable pageable) {
+        logger.debug("Lấy danh sách phim yêu thích cho người dùng: {} với phân trang", username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
+                });
+
+        Page<Favorite> favorites = favoriteRepository.findByUser(user, pageable);
+        logger.info("Đã lấy được {} phim yêu thích cho người dùng: {} từ database", favorites.getTotalElements(), username);
+
+        return favorites.map(favorite -> {
+            Long movieId = favorite.getMovieId();
+            MovieResponse movie = movieClient.getMovieById(movieId);
             Map<String, Object> favoriteMap = new HashMap<>();
-            favoriteMap.put("movieId", favorite.getMovieId());
-            favoriteMap.put("title", movie != null ? movie.getTitle() : "Không tìm thấy phim");
+            favoriteMap.put("movieId", movieId);
+            favoriteMap.put("title", (movie != null) ? movie.getTitle() : "Phim không tìm thấy");
             favoriteMap.put("createdAt", favorite.getCreatedAt());
             return favoriteMap;
-        }).collect(Collectors.toList());
+        });
+    }
+
+    public Map<String, Object> getUserDetail(String username, Pageable pageable) {
+        logger.debug("Lấy thông tin chi tiết người dùng: {} với phân trang", username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
+                });
+
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("username", user.getUsername());
+        userInfo.put("email", user.getEmail());
+        userInfo.put("role", user.getRole() == 0 ? "ADMIN" : "USER");
+        userInfo.put("name", user.getName());
+        userInfo.put("gender", user.getGender() != null ? user.getGender().name() : null);
+        userInfo.put("avatar", user.getAvatar());
+        userInfo.put("createdAt", user.getCreatedAt());
+
+        Page<Favorite> favorites = favoriteRepository.findByUser(user, pageable);
+        Page<Map<String, Object>> favoritesPage = favorites.map(favorite -> {
+            Long movieId = favorite.getMovieId();
+            MovieResponse movie = movieClient.getMovieById(movieId);
+            Map<String, Object> favoriteMap = new HashMap<>();
+            favoriteMap.put("movieId", movieId);
+            favoriteMap.put("title", (movie != null) ? movie.getTitle() : "Phim không tìm thấy");
+            favoriteMap.put("createdAt", favorite.getCreatedAt());
+            return favoriteMap;
+        });
+        userInfo.put("favorites", favoritesPage);
+
+        logger.info("Lấy thông tin chi tiết thành công cho người dùng: {}", username);
+        return userInfo;
+    }
+
+    public void updateUser(String username, UpdateUserRequest updateRequest) {
+        logger.debug("Cập nhật thông tin người dùng: {}", username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
+                });
+
+        if (!user.getEmail().equals(updateRequest.getEmail())) {
+            if (userRepository.findByEmail(updateRequest.getEmail()).isPresent()) {
+                logger.warn("Email '{}' đã tồn tại", updateRequest.getEmail());
+                throw new DuplicateResourceException("Email đã được sử dụng");
+            }
+        }
+
+        user.setEmail(updateRequest.getEmail());
+        user.setName(updateRequest.getName());
+        user.setGender(updateRequest.getGender() != null ? User.Gender.valueOf(updateRequest.getGender().toUpperCase()) : user.getGender());
+        user.setAvatar(updateRequest.getAvatar());
+        userRepository.save(user);
+        logger.info("Cập nhật thông tin thành công cho người dùng: {}", username);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("username", user.getUsername());
+        payload.put("email", user.getEmail());
+        payload.put("name", user.getName());
+        payload.put("gender", user.getGender() != null ? user.getGender().name() : null);
+        payload.put("avatar", user.getAvatar());
+        KafkaMessage kafkaMessage = new KafkaMessage("user", "UPDATE", user.getId(), payload);
+
+        try {
+            String messageJson = objectMapper.writeValueAsString(kafkaMessage);
+            kafkaProducerService.sendMessage("user-events", messageJson);
+            logger.debug("Gửi tin nhắn Kafka thành công cho sự kiện cập nhật: {}", messageJson);
+        } catch (Exception e) {
+            logger.error("Lỗi khi gửi tin nhắn Kafka cho người dùng '{}': {}", username, e.getMessage());
+        }
+    }
+
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        logger.debug("Thay đổi mật khẩu cho người dùng: {}", username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
+                });
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            logger.warn("Mật khẩu cũ không đúng cho người dùng: {}", username);
+            throw new InvalidCredentialsException("Mật khẩu cũ không đúng");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            logger.warn("Mật khẩu mới không được giống mật khẩu cũ cho người dùng: {}", username);
+            throw new InvalidCredentialsException("Mật khẩu mới phải khác mật khẩu cũ");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        logger.info("Thay đổi mật khẩu thành công cho người dùng: {}", username);
+
+        Map<String, Object> payload = Map.of("username", user.getUsername(), "passwordUpdated", true);
+        KafkaMessage kafkaMessage = new KafkaMessage("user", "PASSWORD_CHANGE", user.getId(), payload);
+
+        try {
+            String messageJson = objectMapper.writeValueAsString(kafkaMessage);
+            kafkaProducerService.sendMessage("user-events", messageJson);
+            logger.debug("Gửi tin nhắn Kafka thành công cho sự kiện thay đổi mật khẩu: {}", messageJson);
+        } catch (Exception e) {
+            logger.error("Lỗi khi gửi tin nhắn Kafka cho người dùng '{}': {}", username, e.getMessage());
+        }
     }
 
     public void recordMovieView(String username, Long movieId) {
@@ -191,13 +315,13 @@ public class UserService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> {
                     logger.warn("Không tìm thấy người dùng: {}", username);
-                    return new ResourceNotFoundException("Không tìm thấy người dùng");
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
                 });
 
         MovieResponse movie = movieClient.getMovieById(movieId);
         if (movie == null) {
-            logger.warn("Không tìm thấy phim với ID: {}", movieId);
-            throw new ResourceNotFoundException("Không tìm thấy phim");
+            logger.warn("Không tìm thấy phim với ID: {} từ movie-service", movieId);
+            throw new ResourceNotFoundException("Phim không tồn tại");
         }
 
         MovieView movieView = MovieView.builder()
@@ -205,37 +329,40 @@ public class UserService {
                 .movieId(movieId)
                 .viewedAt(LocalDateTime.now())
                 .build();
-
         movieViewRepository.save(movieView);
-        logger.info("Đã ghi lại lịch sử xem phim cho người dùng: {}, movieId: {}", username, movieId);
+        logger.info("Ghi lại lượt xem phim thành công cho người dùng: {}, movieId: {}", username, movieId);
 
-        Map<String, Object> payload = Map.of(
-                "userId", user.getId(),
-                "movieId", movieId
-        );
+        Map<String, Object> payload = Map.of("userId", user.getId(), "movieId", movieId);
         KafkaMessage kafkaMessage = new KafkaMessage("movie-view", "VIEW", user.getId(), payload);
 
         try {
             String messageJson = objectMapper.writeValueAsString(kafkaMessage);
             kafkaProducerService.sendMessage("movie-views", messageJson);
-            logger.debug("Đã gửi tin nhắn Kafka cho sự kiện xem phim: {}", messageJson);
+            logger.debug("Gửi tin nhắn Kafka thành công cho sự kiện xem phim: {}", messageJson);
         } catch (Exception e) {
             logger.error("Lỗi khi gửi tin nhắn Kafka cho sự kiện xem phim: user={}, movieId={}", username, movieId, e);
         }
     }
 
-    public void logout(String token) {
-        if (!jwtProvider.validateToken(token)) {
-            throw new InvalidCredentialsException("Token không hợp lệ");
-        }
+    public Map<String, Object> getMe(String username) {
+        logger.debug("Lấy thông tin người dùng hiện tại: {}", username);
 
-        long expiryMillis = jwtProvider.getExpirationFromToken(token);
-        long ttlSeconds = (expiryMillis - System.currentTimeMillis()) / 1000;
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
+                });
 
-        redisTemplate.opsForValue().set("blacklist:" + token, "true", ttlSeconds, TimeUnit.SECONDS);
-    }
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("username", user.getUsername());
+        userInfo.put("email", user.getEmail());
+        userInfo.put("role", user.getRole() == 0 ? "ADMIN" : "USER");
+        userInfo.put("name", user.getName());
+        userInfo.put("gender", user.getGender() != null ? user.getGender().name() : null);
+        userInfo.put("avatar", user.getAvatar());
+        userInfo.put("createdAt", user.getCreatedAt());
 
-    public boolean isTokenBlacklisted(String token) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token));
+        logger.info("Lấy thông tin thành công cho người dùng: {}", username);
+        return userInfo;
     }
 }
