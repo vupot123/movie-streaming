@@ -180,6 +180,37 @@ public class UserController {
         }
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<String>> changePassword(HttpServletRequest request, @RequestBody Map<String, String> body) {
+        try {
+            logger.debug("Yêu cầu thay đổi mật khẩu cho người dùng");
+            String username = extractUsernameFromRequest(request);
+            String oldPassword = body.get("oldPassword");
+            String newPassword = body.get("newPassword");
+
+            if (oldPassword == null || newPassword == null) {
+                logger.warn("Thiếu oldPassword hoặc newPassword trong yêu cầu");
+                throw new IllegalArgumentException("Cả oldPassword và newPassword là bắt buộc");
+            }
+
+            userService.changePassword(username, oldPassword, newPassword);
+            logger.info("Thay đổi mật khẩu thành công cho username: {}", username);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Thay đổi mật khẩu thành công", null));
+        } catch (InvalidCredentialsException e) {
+            logger.warn("Lỗi thay đổi mật khẩu: {}", e.getMessage());
+            return ResponseEntity.status(401).body(new ApiResponse<>(401, e.getMessage(), null));
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Lỗi thay đổi mật khẩu: {}", e.getMessage());
+            return ResponseEntity.status(404).body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (IllegalArgumentException e) {
+            logger.warn("Lỗi thay đổi mật khẩu: {}", e.getMessage());
+            return ResponseEntity.status(400).body(new ApiResponse<>(400, e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Lỗi không xác định khi thay đổi mật khẩu", e);
+            return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
+        }
+    }
+
     @PostMapping("/views")
     public ResponseEntity<ApiResponse<String>> recordMovieView(HttpServletRequest request, @RequestBody Map<String, Long> body) {
         try {

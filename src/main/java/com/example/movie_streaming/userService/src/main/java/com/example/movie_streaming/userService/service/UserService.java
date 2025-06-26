@@ -44,7 +44,7 @@ public class UserService {
     private final MovieClient movieClient;
     private final JwtProvider jwtProvider;
     private final ObjectMapper objectMapper;
-    private final BCryptPasswordEncoder passwordEncoder; // Đảm bảo bean này được tiêm
+    private final BCryptPasswordEncoder passwordEncoder;
 
     public void register(@Valid RegisterRequest request) {
         logger.debug("Bắt đầu đăng ký người dùng: {}", request.getUsername());
@@ -64,6 +64,8 @@ public class UserService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
+                .gender(request.getGender() != null ? User.Gender.valueOf(request.getGender().toUpperCase()) : null)
+                .avatar(request.getAvatar())
                 .role(1)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -212,6 +214,8 @@ public class UserService {
         userInfo.put("email", user.getEmail());
         userInfo.put("role", user.getRole() == 0 ? "ADMIN" : "USER");
         userInfo.put("name", user.getName());
+        userInfo.put("gender", user.getGender() != null ? user.getGender().name() : null);
+        userInfo.put("avatar", user.getAvatar());
         userInfo.put("createdAt", user.getCreatedAt());
 
         Page<Favorite> favorites = favoriteRepository.findByUser(user, pageable);
@@ -246,12 +250,10 @@ public class UserService {
             }
         }
 
-        // Cập nhật password nếu được cung cấp và không rỗng
-        if (updateRequest.getPassword() != null && !updateRequest.getPassword().trim().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(updateRequest.getPassword()));
-        }
         user.setEmail(updateRequest.getEmail());
         user.setName(updateRequest.getName());
+        user.setGender(updateRequest.getGender() != null ? User.Gender.valueOf(updateRequest.getGender().toUpperCase()) : user.getGender());
+        user.setAvatar(updateRequest.getAvatar());
         userRepository.save(user);
         logger.info("Cập nhật thông tin thành công cho người dùng: {}", username);
 
@@ -259,15 +261,49 @@ public class UserService {
         payload.put("username", user.getUsername());
         payload.put("email", user.getEmail());
         payload.put("name", user.getName());
-        if (updateRequest.getPassword() != null && !updateRequest.getPassword().trim().isEmpty()) {
-            payload.put("passwordUpdated", true); // Không gửi password thô
-        }
+        payload.put("gender", user.getGender() != null ? user.getGender().name() : null);
+        payload.put("avatar", user.getAvatar());
         KafkaMessage kafkaMessage = new KafkaMessage("user", "UPDATE", user.getId(), payload);
 
         try {
             String messageJson = objectMapper.writeValueAsString(kafkaMessage);
             kafkaProducerService.sendMessage("user-events", messageJson);
             logger.debug("Gửi tin nhắn Kafka thành công cho sự kiện cập nhật: {}", messageJson);
+        } catch (Exception e) {
+            logger.error("Lỗi khi gửi tin nhắn Kafka cho người dùng '{}': {}", username, e.getMessage());
+        }
+    }
+
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        logger.debug("Thay đổi mật khẩu cho người dùng: {}", username);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
+                });
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            logger.warn("Mật khẩu cũ không đúng cho người dùng: {}", username);
+            throw new InvalidCredentialsException("Mật khẩu cũ không đúng");
+        }
+
+        if (oldPassword.equals(newPassword)) {
+            logger.warn("Mật khẩu mới không được giống mật khẩu cũ cho người dùng: {}", username);
+            throw new InvalidCredentialsException("Mật khẩu mới phải khác mật khẩu cũ");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        logger.info("Thay đổi mật khẩu thành công cho người dùng: {}", username);
+
+        Map<String, Object> payload = Map.of("username", user.getUsername(), "passwordUpdated", true);
+        KafkaMessage kafkaMessage = new KafkaMessage("user", "PASSWORD_CHANGE", user.getId(), payload);
+
+        try {
+            String messageJson = objectMapper.writeValueAsString(kafkaMessage);
+            kafkaProducerService.sendMessage("user-events", messageJson);
+            logger.debug("Gửi tin nhắn Kafka thành công cho sự kiện thay đổi mật khẩu: {}", messageJson);
         } catch (Exception e) {
             logger.error("Lỗi khi gửi tin nhắn Kafka cho người dùng '{}': {}", username, e.getMessage());
         }
@@ -322,6 +358,8 @@ public class UserService {
         userInfo.put("email", user.getEmail());
         userInfo.put("role", user.getRole() == 0 ? "ADMIN" : "USER");
         userInfo.put("name", user.getName());
+        userInfo.put("gender", user.getGender() != null ? user.getGender().name() : null);
+        userInfo.put("avatar", user.getAvatar());
         userInfo.put("createdAt", user.getCreatedAt());
 
         logger.info("Lấy thông tin thành công cho người dùng: {}", username);
