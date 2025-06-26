@@ -207,19 +207,4 @@ public class CollectionService {
                 .movieIDs(movieIds)
                 .build();
     }
-
-    private CollectionFullResponse toFullResponse(Collection collection) {
-        List<CollectionMovie> collectionMovies = collectionMovieRepo.findAllByCollectionId(collection.getId());
-
-        List<Movie> movies = collectionMovies.stream()
-                .map(CollectionMovie::getMovie)
-                .toList();
-
-        return CollectionFullResponse.builder()
-                .id(collection.getId())
-                .name(collection.getName())
-                .featured(collection.getFeatured())
-                .movies(movies.stream().map(movieMapper::toResponse).toList())
-                .build();
-    }
 }

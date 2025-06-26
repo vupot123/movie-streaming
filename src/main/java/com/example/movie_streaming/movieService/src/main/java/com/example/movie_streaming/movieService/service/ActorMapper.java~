@@ -6,14 +6,20 @@ import com.example.movie_streaming.movieService.model.dto.response.ActorResponse
 import com.example.movie_streaming.movieService.model.dto.response.MovieResponse;
 import com.example.movie_streaming.movieService.model.entity.Actor;
 import com.example.movie_streaming.movieService.model.entity.Gender;
+import com.example.movie_streaming.movieService.model.entity.MovieActor;
 
+import lombok.RequiredArgsConstructor;
+import org.hibernate.validator.internal.util.stereotypes.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class ActorMapper {
+
+    private final @Lazy MovieMapper movieMapper;
 
     public ActorResponse toResponse(Actor actor) {
         List<Long> movieIds = actor.getMovieActors() != null
@@ -34,7 +40,13 @@ public class ActorMapper {
         );
     }
 
-    public ActorFullResponse toFullResponse(Actor actor, List<MovieResponse> movies) {
+    public ActorFullResponse toFullResponse(Actor actor) {
+        List<MovieResponse> movies = actor.getMovieActors() != null
+                ? actor.getMovieActors().stream()
+                .map(ma -> movieMapper.toResponse(ma.getMovie()))
+                .collect(Collectors.toList())
+                : List.of();
+
         return ActorFullResponse.builder()
                 .id(actor.getId())
                 .name(actor.getName())
@@ -59,7 +71,8 @@ public class ActorMapper {
         if (request.getGender() != null && !request.getGender().trim().isEmpty()) {
             try {
                 actor.setGender(Gender.valueOf(request.getGender().trim().toUpperCase()));
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+            }
         }
         if (request.getAvatarUrl() != null) {
             actor.setAvatarUrl(request.getAvatarUrl());

@@ -53,8 +53,7 @@ public class ActorService {
         Actor actor = actorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Not found actor ID: " + id));
 
-        Set<MovieActor> movieActors = new HashSet<>(actor.getMovieActors());
-        List<MovieResponse> movieResponses = movieMapper.mapMovieActorsToMovieResponses(movieActors);
+        List<MovieResponse> movieResponses = movieMapper.mapMovieActorsToMovieResponses(actor.getMovieActors());
         return actorMapper.toFullResponse(actor, movieResponses);
     }
 

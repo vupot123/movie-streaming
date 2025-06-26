@@ -23,8 +23,8 @@ public class CollectionController {
     private final CollectionService collectionService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> getAllCollections(Pageable pageable) {
-        Page<CollectionFullResponse> collections = collectionService.getAllCollections(pageable);
+    public ResponseEntity<ApiResponse<Page<CollectionResponse>>> getAllCollections(Pageable pageable) {
+        Page<CollectionResponse> collections = collectionService.getAllCollections(pageable);
         return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched successfully", collections));
     }
 

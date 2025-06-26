@@ -21,7 +21,7 @@ public class ActorController {
     private final ActorService actorService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ActorFullResponse>>> getAllOrSearch(
+    public ResponseEntity<ApiResponse<Page<ActorResponse>>> getAllOrSearch(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword

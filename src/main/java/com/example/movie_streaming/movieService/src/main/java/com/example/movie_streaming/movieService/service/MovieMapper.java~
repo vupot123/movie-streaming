@@ -38,13 +38,6 @@ public class MovieMapper {
                 .build();
     }
 
-    public List<MovieResponse> mapMovieActorsToMovieResponses(Set<MovieActor> movieActors) {
-        if (movieActors == null) return List.of();
-        return movieActors.stream()
-                .map(ma -> toResponse(ma.getMovie()))
-                .toList();
-    }
-
     private Set<CollectionResponse> mapCollections(Set<CollectionMovie> collectionMovies) {
         if (collectionMovies == null) return Set.of();
 
