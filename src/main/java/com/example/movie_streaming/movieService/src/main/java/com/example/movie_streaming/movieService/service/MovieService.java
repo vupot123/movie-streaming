@@ -44,13 +44,19 @@ public class MovieService {
     private final CollectionMovieRepository collectionMovieRepository;
     private final MovieMapper movieMapper;
 
+    @Transactional(readOnly = true)
     public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
         int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() - 1 : 0;
         int size = request.getSize() != null && request.getSize() > 0 ? request.getSize() : 20;
         Pageable pageable = PageRequest.of(page, size);
+
         return movieRepository.findAll(new MovieSpecification(request), pageable)
-                .map(movieMapper::toResponse);
+                .map(movie -> {
+                    initializeMovie(movie); // 👈 THÊM DÒNG NÀY để Hibernate load đầy đủ
+                    return movieMapper.toResponse(movie);
+                });
     }
+
 
     @Transactional(readOnly = true)
     public List<MovieResponse> getAllMovies() {
@@ -82,6 +88,7 @@ public class MovieService {
 
         return new org.springframework.data.domain.PageImpl<>(movieResponses, pageable, movies.size());
     }
+
 
     @Transactional(readOnly = true)
     public MovieResponse getMovieById(Long id) {
@@ -368,22 +375,27 @@ public class MovieService {
 
     private void initializeMovie(Movie movie) {
         Hibernate.initialize(movie.getSeasons());
-        movie.getSeasons().forEach(season -> Hibernate.initialize(season.getEpisodes())); // 👉 Load tập phim
+        movie.getSeasons().forEach(season -> Hibernate.initialize(season.getEpisodes()));
 
         Hibernate.initialize(movie.getTrailers());
         Hibernate.initialize(movie.getBanner());
 
-        Hibernate.initialize(movie.getMovieActors()); // 👉 Load actor
+        Hibernate.initialize(movie.getMovieActors());
         movie.getMovieActors().forEach(ma -> Hibernate.initialize(ma.getActor()));
 
-        Hibernate.initialize(movie.getMovieGenres()); // 👉 Load genre
+        Hibernate.initialize(movie.getMovieGenres());
         movie.getMovieGenres().forEach(mg -> Hibernate.initialize(mg.getGenre()));
 
         Hibernate.initialize(movie.getCountry());
 
-        Hibernate.initialize(movie.getCollectionMovies()); // 👉 Load collections
-        movie.getCollectionMovies().forEach(cm -> Hibernate.initialize(cm.getCollection()));
+        Hibernate.initialize(movie.getCollectionMovies());
+        movie.getCollectionMovies().forEach(cm -> {
+            Collection c = cm.getCollection();
+            Hibernate.initialize(c); // đảm bảo collection không phải proxy
+            Hibernate.initialize(c.getCollectionMovies()); // ✅ bắt buộc load để tránh lỗi
+        });
     }
+
 
 
 
