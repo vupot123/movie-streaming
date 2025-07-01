@@ -57,7 +57,7 @@ public class Movie {
     @JsonIgnore
     private Set<MovieTrailer> trailers;
 
-    @OneToOne(mappedBy = "movie", cascade = CascadeType.ALL, fetch = FetchType.LAZY, optional = true)
+    @OneToOne(mappedBy = "movie", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @JsonManagedReference
     private MovieBanner banner;
 
