@@ -179,15 +179,30 @@ public class MovieService {
     }
 
     private void deleteMovieRelations(Long movieId) {
-        List<Long> seasonIds = seasonRepository.findByMovieId(movieId).stream().map(Season::getId).toList();
+        // Load movie để xử lý quan hệ
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with ID: " + movieId));
+
+        // Bỏ liên kết với banner (do cascade sẽ tự xóa banner)
+        movie.setBanner(null);
+        movieRepository.save(movie); // update lại movie để Hibernate ghi nhận unlink
+
+        // Xoá các quan hệ phụ thuộc khác
+        List<Long> seasonIds = seasonRepository.findByMovieId(movieId)
+                .stream()
+                .map(Season::getId)
+                .toList();
+
         episodeRepository.deleteBySeasonIds(seasonIds);
         seasonRepository.deleteByMovieId(movieId);
         movieActorRepository.deleteByMovieId(movieId);
         movieGenreRepository.deleteByMovieId(movieId);
         trailerRepository.deleteByMovieId(movieId);
-        bannerRepository.deleteByMovieId(movieId);
+        // bannerRepository.deleteByMovieId(movieId); // ❌ KHÔNG cần vì đã unlink và cascade
         collectionMovieRepository.deleteByMovieId(movieId);
     }
+
+
 
     private void deleteActorsGenresAndBanner(Long movieId) {
         movieActorRepository.deleteByMovieId(movieId);
@@ -338,43 +353,70 @@ public class MovieService {
     }
 
     private void mergeMovieRelations(Movie movie, List<Long> actorIds, List<Integer> genreIds) {
-        // === ACTOR ===
+        // ==== ACTORS ====
         Set<Long> currentActorIds = movie.getMovieActors().stream()
                 .map(ma -> ma.getActor().getId()).collect(Collectors.toSet());
+        Set<Long> newActorIdSet = new HashSet<>(actorIds);
 
-        List<Long> newActorIds = actorIds.stream()
-                .filter(id -> !currentActorIds.contains(id))
-                .toList();
+        // Tìm actor cần xóa
+        Set<Long> toRemoveActorIds = new HashSet<>(currentActorIds);
+        toRemoveActorIds.removeAll(newActorIdSet);
 
-        List<MovieActor> newMovieActors = newActorIds.stream()
-                .map(actorId -> new MovieActor(
-                        new MovieActorId(movie.getId(), actorId),
-                        movie,
-                        actorRepository.findById(actorId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy diễn viên ID: " + actorId))
-                )).toList();
+        // Tìm actor cần thêm
+        Set<Long> toAddActorIds = new HashSet<>(newActorIdSet);
+        toAddActorIds.removeAll(currentActorIds);
 
-        movieActorRepository.saveAll(newMovieActors);
-        movie.getMovieActors().addAll(newMovieActors);
+        // Xóa actor không còn
+        if (!toRemoveActorIds.isEmpty()) {
+            movieActorRepository.deleteByMovieIdAndActorIds(movie.getId(), toRemoveActorIds);
+            movie.getMovieActors().removeIf(ma -> toRemoveActorIds.contains(ma.getActor().getId()));
+        }
 
-        // === GENRE ===
+        // Thêm actor mới
+        if (!toAddActorIds.isEmpty()) {
+            List<MovieActor> actorsToAdd = toAddActorIds.stream()
+                    .map(actorId -> new MovieActor(
+                            new MovieActorId(movie.getId(), actorId),
+                            movie,
+                            actorRepository.findById(actorId)
+                                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy diễn viên ID: " + actorId))
+                    )).toList();
+            movieActorRepository.saveAll(actorsToAdd);
+            movie.getMovieActors().addAll(actorsToAdd);
+        }
+
+        // ==== GENRES ====
         Set<Integer> currentGenreIds = movie.getMovieGenres().stream()
                 .map(mg -> mg.getGenre().getId()).collect(Collectors.toSet());
+        Set<Integer> newGenreIdSet = new HashSet<>(genreIds);
 
-        List<Integer> newGenreIds = genreIds.stream()
-                .filter(id -> !currentGenreIds.contains(id))
-                .toList();
+        // Tìm genre cần xóa
+        Set<Integer> toRemoveGenreIds = new HashSet<>(currentGenreIds);
+        toRemoveGenreIds.removeAll(newGenreIdSet);
 
-        List<MovieGenre> newMovieGenres = newGenreIds.stream()
-                .map(genreId -> new MovieGenre(
-                        new MovieGenreId(movie.getId(), genreId),
-                        movie,
-                        genreRepository.findById(genreId)
-                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thể loại ID: " + genreId))
-                )).toList();
+        // Tìm genre cần thêm
+        Set<Integer> toAddGenreIds = new HashSet<>(newGenreIdSet);
+        toAddGenreIds.removeAll(currentGenreIds);
 
-        movieGenreRepository.saveAll(newMovieGenres);
-        movie.getMovieGenres().addAll(newMovieGenres);
+        // Xóa genre không còn
+        if (!toRemoveGenreIds.isEmpty()) {
+            movieGenreRepository.deleteByMovieIdAndGenreIds(movie.getId(), toRemoveGenreIds);
+            movie.getMovieGenres().removeIf(mg -> toRemoveGenreIds.contains(mg.getGenre().getId()));
+        }
+
+        // Thêm genre mới
+        if (!toAddGenreIds.isEmpty()) {
+            List<MovieGenre> genresToAdd = toAddGenreIds.stream()
+                    .map(genreId -> new MovieGenre(
+                            new MovieGenreId(movie.getId(), genreId),
+                            movie,
+                            genreRepository.findById(genreId)
+                                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thể loại ID: " + genreId))
+                    )).toList();
+            movieGenreRepository.saveAll(genresToAdd);
+            movie.getMovieGenres().addAll(genresToAdd);
+        }
     }
+
 
 }

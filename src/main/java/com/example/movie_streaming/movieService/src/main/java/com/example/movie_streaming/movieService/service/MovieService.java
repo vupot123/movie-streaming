@@ -179,15 +179,30 @@ public class MovieService {
     }
 
     private void deleteMovieRelations(Long movieId) {
-        List<Long> seasonIds = seasonRepository.findByMovieId(movieId).stream().map(Season::getId).toList();
+        // Load movie để xử lý quan hệ
+        Movie movie = movieRepository.findById(movieId)
+                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with ID: " + movieId));
+
+        // Bỏ liên kết với banner (do cascade sẽ tự xóa banner)
+        movie.setBanner(null);
+        movieRepository.save(movie); // update lại movie để Hibernate ghi nhận unlink
+
+        // Xoá các quan hệ phụ thuộc khác
+        List<Long> seasonIds = seasonRepository.findByMovieId(movieId)
+                .stream()
+                .map(Season::getId)
+                .toList();
+
         episodeRepository.deleteBySeasonIds(seasonIds);
         seasonRepository.deleteByMovieId(movieId);
         movieActorRepository.deleteByMovieId(movieId);
         movieGenreRepository.deleteByMovieId(movieId);
         trailerRepository.deleteByMovieId(movieId);
-        bannerRepository.deleteByMovieId(movieId);
+        // bannerRepository.deleteByMovieId(movieId); //
         collectionMovieRepository.deleteByMovieId(movieId);
     }
+
+
 
     private void deleteActorsGenresAndBanner(Long movieId) {
         movieActorRepository.deleteByMovieId(movieId);

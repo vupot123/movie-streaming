@@ -22,11 +22,21 @@ public class CollectionController {
 
     private final CollectionService collectionService;
 
+//    @GetMapping
+//    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> getAllCollections(Pageable pageable) {
+//        Page<CollectionFullResponse> collections = collectionService.getAllCollections(pageable);
+//        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched successfully", collections));
+//    }
+
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> getAllCollections(Pageable pageable) {
-        Page<CollectionFullResponse> collections = collectionService.getAllCollections(pageable);
-        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched successfully", collections));
+    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> getAllOrSearch(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            Pageable pageable
+    ) {
+        Page<CollectionFullResponse> result = collectionService.getAllCollections(pageable, keyword);
+        return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched successfully", result));
     }
+
 
     @PostMapping
     public ResponseEntity<ApiResponse<CollectionResponse>> createCollection(
@@ -85,9 +95,9 @@ public class CollectionController {
         return ResponseEntity.ok(ApiResponse.success(200, "Collection featured status updated", response));
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> searchByName(@RequestParam("keyword") String keyword, Pageable pageable) {
-        Page<CollectionFullResponse> results = collectionService.searchByName(keyword, pageable);
-        return ResponseEntity.ok(ApiResponse.success(200, "Collection searched successfully", results));
-    }
+//    @GetMapping("/search")
+//    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> searchByName(@RequestParam("keyword") String keyword, Pageable pageable) {
+//        Page<CollectionFullResponse> results = collectionService.searchByName(keyword, pageable);
+//        return ResponseEntity.ok(ApiResponse.success(200, "Collection searched successfully", results));
+//    }
 }

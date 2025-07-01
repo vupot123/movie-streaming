@@ -160,8 +160,14 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public Page<CollectionResponse> getNotFeaturedCollections(Pageable pageable) {
-        return collectionRepo.findByFeaturedFalse(pageable).map(this::toResponse);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        return collectionRepo.findByFeaturedFalse(sortedPageable).map(this::toResponse);
     }
+
 
     @Transactional
     public void deleteCollection(Long id) {
