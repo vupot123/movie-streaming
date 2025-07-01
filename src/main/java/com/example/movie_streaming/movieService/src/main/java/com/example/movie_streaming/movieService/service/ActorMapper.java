@@ -34,6 +34,19 @@ public class ActorMapper {
         );
     }
 
+    public ActorResponse toResponseBasic(Actor actor) {
+        return new ActorResponse(
+                actor.getId(),
+                actor.getName(),
+                actor.getGender() != null ? actor.getGender().name() : null,
+                actor.getDob(),
+                actor.getAvatarUrl(),
+                actor.getBio(),
+                null // Không tính movieIds để tránh lazy load lỗi
+        );
+    }
+
+
     public ActorFullResponse toFullResponse(Actor actor, List<MovieResponse> movies) {
         return ActorFullResponse.builder()
                 .id(actor.getId())

@@ -16,4 +16,9 @@ public interface EpisodeRepository extends JpaRepository<Episode, Long> {
     @Transactional
     @Query("DELETE FROM Episode e WHERE e.season.id = :seasonId")
     void deleteBySeasonId(@Param("seasonId") Long seasonId);
+
+    @Modifying
+    @Query("DELETE FROM Episode e WHERE e.season.id IN :seasonIds")
+    void deleteBySeasonIds(@Param("seasonIds") List<Long> seasonIds);
+
 }

@@ -53,14 +53,15 @@ public class ActorService {
         Actor actor = actorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Not found actor ID: " + id));
 
-        List<MovieResponse> movieResponses = movieMapper.mapMovieActorsToMovieResponses(actor.getMovieActors());
+        Set<MovieActor> movieActors = new HashSet<>(actor.getMovieActors());
+        List<MovieResponse> movieResponses = movieMapper.mapMovieActorsToMovieResponses(movieActors);
         return actorMapper.toFullResponse(actor, movieResponses);
     }
 
 
     @Transactional
     public ActorResponse create(ActorRequest request) {
-        Actor actor = movieMapper.toActorEntity(request); // Giả sử movieMapper hỗ trợ ánh xạ
+        Actor actor = movieMapper.toActorEntity(request);
         Actor saved = actorRepository.save(actor);
 
         Map<String, Object> payload = new HashMap<>();
@@ -103,13 +104,13 @@ public class ActorService {
 
     @Transactional
     public void delete(Long id) {
-        // Bước 1: Xóa các bản ghi liên quan trong movie_actor trước
+        // Xóa các bản ghi liên quan trong movie_actor trước
         List<MovieActor> movieActors = movieActorRepository.findByActorId(id);
         if (!movieActors.isEmpty()) {
             movieActorRepository.deleteAll(movieActors);
         }
 
-        // Bước 2: Xóa actor
+        // Xóa actor
         Actor actor = actorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Not found actor ID: " + id));
         actorRepository.delete(actor);
