@@ -41,10 +41,10 @@ spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.security.ser
 
 # Logging
 logging.level.root=INFO
-logging.level.com.example=INFO
-logging.level.org.springframework.web=INFO
-logging.level.org.springframework.security=INFO
-logging.level.com.example.movie_streaming=INFO
+logging.level.com.example=DEBUG
+logging.level.org.springframework.web=DEBUG
+logging.level.org.springframework.security=DEBUG
+logging.level.com.example.movie_streaming=DEBUG
 #logging.level.org.hibernate=DEBUG
 #logging.level.org.hibernate.SQL=DEBUG
 #logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE

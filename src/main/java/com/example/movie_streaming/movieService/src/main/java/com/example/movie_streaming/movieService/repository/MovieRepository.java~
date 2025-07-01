@@ -41,21 +41,6 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
     @Query("SELECT m FROM Movie m WHERE m.id = :id")
     Optional<Movie> findFullById(@Param("id") Long id);
 
-    @EntityGraph(attributePaths = {
-            "movieActors.actor",
-            "movieActors.actor.movieActors.movie",
-            "movieGenres.genre",
-            "country",
-            "trailers",
-            "banner",
-            "seasons",
-            "seasons.episodes",
-            "collectionMovies.collection",
-            "collectionMovies.collection.collectionMovies.movie"
-    })
-    @Query("SELECT m FROM Movie m")
-    List<Movie> findAllFull();
-
 
     @EntityGraph(attributePaths = {
             "movieActors.actor",

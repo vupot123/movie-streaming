@@ -9,6 +9,8 @@ import com.example.movie_streaming.movieService.model.entity.*;
 import com.example.movie_streaming.movieService.model.entity.Collection;
 import com.example.movie_streaming.movieService.repository.*;
 import com.example.movie_streaming.movieService.specification.MovieSpecification;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Hibernate;
@@ -39,6 +41,9 @@ public class MovieService {
     private final CollectionMovieRepository collectionMovieRepository;
     private final MovieMapper movieMapper;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Transactional(readOnly = true)
     public Page<MovieResponse> filterMovies(MovieFilterRequest request) {
         int page = request.getPage() != null && request.getPage() > 0 ? request.getPage() - 1 : 0;
@@ -57,16 +62,17 @@ public class MovieService {
 
     @Transactional(readOnly = true)
     public Page<MovieResponse> getAllOrSearch(String keyword, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        List<Movie> movies = (keyword != null && !keyword.isBlank()) ?
-                movieRepository.searchByTitleOrActorName(keyword.trim()) :
-                movieRepository.findAll();
-        int start = Math.min(page * size, movies.size());
-        int end = Math.min(start + size, movies.size());
-        List<MovieResponse> response = movies.subList(start, end).stream()
-                .map(movieMapper::toResponse)
-                .toList();
-        return new PageImpl<>(response, pageable, movies.size());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+
+        Page<Movie> moviesPage;
+
+        if (keyword != null && !keyword.isBlank()) {
+            moviesPage = movieRepository.searchByTitleOrActorName(keyword.trim(), pageable);
+        } else {
+            moviesPage = movieRepository.findAll(pageable);
+        }
+
+        return moviesPage.map(movieMapper::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -150,13 +156,14 @@ public class MovieService {
 
     @Transactional
     public void deleteMovie(Long id) {
-        if (!movieRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Không tìm thấy phim với ID: " + id);
-        }
-        deleteMovieRelations(id);
-        movieRepository.deleteById(id);
+        Movie movie = movieRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phim với ID: " + id));
+
+        deleteMovieRelations(movie); // truyền entity thay vì id
+        movieRepository.delete(movie); // xóa entity thay vì deleteById
         kafkaProducerService.sendMessage("movie-topic", new KafkaMessage("movie", "DELETE", id, null));
     }
+
 
     @Transactional
     public void addView(Long id) {
@@ -168,41 +175,32 @@ public class MovieService {
                 KafkaPayloadBuilder.buildViewPayload(id, movie.getViews())));
     }
 
-    @Transactional(readOnly = true)
-    public List<MovieResponse> searchMovies(String keyword) {
-        if (keyword == null || keyword.isBlank()) {
-            throw new IllegalArgumentException("Từ khóa tìm kiếm không hợp lệ");
+    private void deleteMovieRelations(Movie movie) {
+        Long movieId = movie.getId();
+
+        // ✳️ Gỡ liên kết banner để Hibernate orphanRemoval hoạt động
+        if (movie.getBanner() != null) {
+            movie.setBanner(null);
+            movieRepository.save(movie);
+            entityManager.flush(); // flush để Hibernate biết xóa MovieBanner
         }
-        return movieRepository.searchByTitleOrActorName(keyword.trim()).stream()
-                .map(movieMapper::toResponse)
-                .toList();
-    }
 
-    private void deleteMovieRelations(Long movieId) {
-        // Load movie để xử lý quan hệ
-        Movie movie = movieRepository.findById(movieId)
-                .orElseThrow(() -> new ResourceNotFoundException("Movie not found with ID: " + movieId));
-
-        // Bỏ liên kết với banner (do cascade sẽ tự xóa banner)
-        movie.setBanner(null);
-        movieRepository.save(movie); // update lại movie để Hibernate ghi nhận unlink
-
-        // Xoá các quan hệ phụ thuộc khác
+        // ✳️ Xóa liên kết tập/phần
         List<Long> seasonIds = seasonRepository.findByMovieId(movieId)
                 .stream()
                 .map(Season::getId)
                 .toList();
 
-        episodeRepository.deleteBySeasonIds(seasonIds);
+        if (!seasonIds.isEmpty()) {
+            episodeRepository.deleteBySeasonIds(seasonIds);
+        }
+
         seasonRepository.deleteByMovieId(movieId);
         movieActorRepository.deleteByMovieId(movieId);
         movieGenreRepository.deleteByMovieId(movieId);
         trailerRepository.deleteByMovieId(movieId);
-        // bannerRepository.deleteByMovieId(movieId); //
         collectionMovieRepository.deleteByMovieId(movieId);
     }
-
-
 
     private void deleteActorsGenresAndBanner(Long movieId) {
         movieActorRepository.deleteByMovieId(movieId);

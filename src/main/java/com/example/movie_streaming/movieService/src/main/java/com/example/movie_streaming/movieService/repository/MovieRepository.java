@@ -51,13 +51,14 @@ public interface MovieRepository extends JpaRepository<Movie, Long>, JpaSpecific
     })
     List<Movie> findAll();
 
-    // Nếu không dùng đến thì xoá
-    @Query("SELECT m FROM Movie m " +
+
+    @Query("SELECT DISTINCT m FROM Movie m " +
             "LEFT JOIN m.movieActors ma " +
             "LEFT JOIN ma.actor a " +
             "WHERE LOWER(m.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "OR LOWER(a.name) LIKE LOWER(CONCAT('%', :keyword, '%'))")
-    List<Movie> searchByTitleOrActorName(@Param("keyword") String keyword);
+    Page<Movie> searchByTitleOrActorName(@Param("keyword") String keyword, Pageable pageable);
+
 
     boolean existsByTitleIgnoreCase(String title);
     boolean existsByTitleIgnoreCaseAndIdNot(String title, Long id);
