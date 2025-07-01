@@ -52,6 +52,25 @@ public class CollectionService {
     }
 
     @Transactional(readOnly = true)
+    public Page<CollectionFullResponse> getAllCollections(Pageable pageable, String keyword) {
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+
+        Page<Collection> collections;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            collections = collectionRepo.findAll(sortedPageable);
+        } else {
+            collections = collectionRepo.findByNameContainingIgnoreCase(keyword.trim(), sortedPageable);
+        }
+
+        return collections.map(this::toFullResponse);
+    }
+
+
+    @Transactional(readOnly = true)
     public Page<CollectionFullResponse> searchByName(String keyword, Pageable pageable) {
         if (keyword == null || keyword.trim().isBlank()) {
             throw new IllegalArgumentException("Search keyword cannot be empty");
