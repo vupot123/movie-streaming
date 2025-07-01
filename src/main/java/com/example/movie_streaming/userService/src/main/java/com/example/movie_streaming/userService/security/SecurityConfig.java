@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/user/register", "/api/user/login").permitAll()
                         // Cấp quyền cho USER và ADMIN truy cập các endpoint mới
                         .requestMatchers(HttpMethod.GET, "/api/user/favorites").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/user/favorites/check/{movieId}").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/user/detail").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/user").hasAnyRole("USER", "ADMIN") // Cập nhật thông tin user
                         .requestMatchers(HttpMethod.POST, "/api/user/views").hasAnyRole("USER", "ADMIN") // Ghi lại lượt xem

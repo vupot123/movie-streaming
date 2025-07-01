@@ -135,6 +135,30 @@ public class UserController {
         }
     }
 
+    @GetMapping("/favorites/check/{movieId}")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> checkFavorite(
+            HttpServletRequest request,
+            @PathVariable Long movieId) {
+        try {
+            logger.debug("Yêu cầu kiểm tra trạng thái yêu thích với movieId: {}", movieId);
+            String username = extractUsernameFromRequest(request);
+            boolean isFavorite = userService.isFavorite(username, movieId);
+            Map<String, Boolean> response = Map.of("isLiked", isFavorite);
+            logger.info("Kiểm tra trạng thái yêu thích thành công cho username: {}, movieId: {}, isLiked: {}",
+                    username, movieId, isFavorite);
+            return ResponseEntity.ok(new ApiResponse<>(200, "Kiểm tra trạng thái yêu thích thành công", response));
+        } catch (InvalidCredentialsException e) {
+            logger.warn("Lỗi kiểm tra trạng thái yêu thích: {}", e.getMessage());
+            return ResponseEntity.status(401).body(new ApiResponse<>(401, e.getMessage(), null));
+        } catch (ResourceNotFoundException e) {
+            logger.warn("Lỗi kiểm tra trạng thái yêu thích: {}", e.getMessage());
+            return ResponseEntity.status(404).body(new ApiResponse<>(404, e.getMessage(), null));
+        } catch (Exception e) {
+            logger.error("Lỗi không xác định khi kiểm tra trạng thái yêu thích với movieId: {}", movieId, e);
+            return ResponseEntity.status(500).body(new ApiResponse<>(500, "Lỗi hệ thống", null));
+        }
+    }
+
     @GetMapping("/detail")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getUserDetail(
             HttpServletRequest request,

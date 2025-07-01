@@ -1,13 +1,10 @@
 package com.example.movie_streaming.streamService.service;
 
-import com.example.movie_streaming.streamService.kafka.KafkaMessage;
-import com.example.movie_streaming.streamService.kafka.KafkaProducerService;
 import com.example.movie_streaming.streamService.model.entity.SingleMovieStream;
 import com.example.movie_streaming.streamService.repository.SingleMovieStreamRepository;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,52 +29,65 @@ public class FileUploadService {
     @Value("${spring.cloud.gcp.storage.bucket}")
     private String bucketName;
 
-    private final KafkaProducerService kafkaProducerService;
     private final Storage storage;
-    private final ObjectMapper objectMapper;
     private final SingleMovieStreamRepository singleMovieStreamRepository;
 
     @Autowired
-    public FileUploadService(KafkaProducerService kafkaProducerService, Storage storage,
-                             ObjectMapper objectMapper, SingleMovieStreamRepository singleMovieStreamRepository) {
-        this.kafkaProducerService = kafkaProducerService;
+    public FileUploadService(Storage storage, SingleMovieStreamRepository singleMovieStreamRepository) {
         this.storage = storage;
-        this.objectMapper = objectMapper;
         this.singleMovieStreamRepository = singleMovieStreamRepository;
     }
 
     public String uploadFileToCloud(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            logger.warn("File is null or empty: {}", file != null ? file.getOriginalFilename() : "null");
+            throw new IOException("File is null or empty");
+        }
+
         String originalFileName = file.getOriginalFilename();
+        logger.debug("Received file for upload: {}", originalFileName);
 
         // Tạo tên file duy nhất bằng cách kiểm tra trùng trong GCS
         String uniqueFileName = makeUniqueFileName(originalFileName);
 
         BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, uniqueFileName)
-                .setContentType(file.getContentType())
+                .setContentType(file.getContentType() != null ? file.getContentType() : "application/octet-stream")
                 .build();
 
         // Tải file lên Google Cloud Storage
         try (InputStream mediaContent = file.getInputStream()) {
+            logger.debug("Starting upload of file {} to GCS bucket {}", uniqueFileName, bucketName);
             storage.create(blobInfo, mediaContent);
+            logger.debug("Upload completed for file {}", uniqueFileName);
         } catch (IOException e) {
-            logger.error("Failed to upload file {} to GCS: {}", uniqueFileName, e.getMessage());
+            logger.error("Failed to upload file {} to GCS: {}", uniqueFileName, e.getMessage(), e);
             throw new IOException("Failed to upload file to GCS: " + e.getMessage(), e);
         }
 
         // Tạo URL công khai của file
         String fileUrl = "https://storage.googleapis.com/" + bucketName + "/" + uniqueFileName;
 
-        // Gửi Kafka message với thông tin file để consumer xử lý lưu vào database
-        sendKafkaMessage("UPLOAD", null, uniqueFileName, fileUrl, file.getContentType());
+        // Lưu thông tin file vào database ngay lập tức
+        SingleMovieStream stream = new SingleMovieStream();
+        stream.setFileName(uniqueFileName);
+        stream.setFileUrl(fileUrl);
+        try {
+            singleMovieStreamRepository.save(stream);
+            logger.info("Uploaded file {} to GCS and saved to database. URL: {}", uniqueFileName, fileUrl);
+        } catch (Exception e) {
+            logger.error("Failed to save file {} to database: {}", uniqueFileName, e.getMessage(), e);
+            // Xóa file trên GCS nếu lưu database thất bại
+            Blob blob = storage.get(bucketName, uniqueFileName);
+            if (blob != null) {
+                storage.delete(bucketName, uniqueFileName);
+                logger.warn("Rolled back upload: Deleted file {} from GCS due to database error", uniqueFileName);
+            }
+            throw new IOException("Failed to save file to database: " + e.getMessage(), e);
+        }
 
         return fileUrl;
     }
 
-    /**
-     * Yêu cầu xóa một file khỏi Google Cloud Storage và database thông qua Kafka message dựa trên fileId.
-     * @param fileId ID của file trong database
-     * @throws Exception Nếu không tìm thấy file hoặc xảy ra lỗi
-     */
     public void deleteFile(Long fileId) throws Exception {
         // Kiểm tra file trong database dựa trên fileId
         Optional<SingleMovieStream> streamOpt = singleMovieStreamRepository.findById(fileId);
@@ -89,17 +99,20 @@ public class FileUploadService {
         String fileName = stream.getFileName();
         String fileUrl = stream.getFileUrl();
 
-        // Gửi Kafka message để consumer xử lý xóa cả GCS và database
-        sendKafkaMessage("DELETE", fileId, fileName, fileUrl, null);
+        // Xóa file trên GCS
+        Blob blob = storage.get(bucketName, fileName);
+        if (blob != null) {
+            storage.delete(bucketName, fileName);
+            logger.info("Deleted file from GCS: {}", fileName);
+        } else {
+            logger.warn("File {} not found in GCS for fileId: {}", fileName, fileId);
+        }
 
-        logger.info("Sent DELETE request for fileId: {} to Kafka. FileName: {}, FileUrl: {}", fileId, fileName, fileUrl);
+        // Xóa bản ghi trong database
+        singleMovieStreamRepository.delete(stream);
+        logger.info("Deleted SingleMovieStream from database for fileId: {}", fileId);
     }
 
-    /**
-     * Lấy thông tin file dựa trên fileId (thay vì movieId)
-     * @param fileId ID của file (có thể null)
-     * @return Map chứa thông tin file hoặc trạng thái
-     */
     public Map<String, Object> getFileInfo(Long fileId) {
         Map<String, Object> fileInfo = new HashMap<>();
         try {
@@ -121,12 +134,6 @@ public class FileUploadService {
         }
     }
 
-    /**
-     * Lấy tất cả thông tin file từ database với phân trang
-     * @param page Số trang (mặc định 0)
-     * @param size Số bản ghi mỗi trang (mặc định 10)
-     * @return Map chứa danh sách file hoặc trạng thái
-     */
     public Map<String, Object> getAllFiles(int page, int size) {
         Map<String, Object> response = new HashMap<>();
         try {
@@ -149,12 +156,6 @@ public class FileUploadService {
         }
     }
 
-    /**
-     * Lấy danh sách tất cả các SingleMovieStream từ database với phân trang
-     * @param page Số trang (mặc định 0)
-     * @param size Số bản ghi mỗi trang (mặc định 10)
-     * @return Page chứa danh sách SingleMovieStream
-     */
     public Page<SingleMovieStream> getAllFileStreams(int page, int size) {
         try {
             logger.debug("Lấy tất cả file streams từ database với page: {}, size: {}", page, size);
@@ -170,13 +171,6 @@ public class FileUploadService {
         }
     }
 
-    /**
-     * Tìm kiếm danh sách SingleMovieStream dựa trên từ khóa (fileName hoặc fileUrl) với phân trang
-     * @param search Từ khóa tìm kiếm
-     * @param page Số trang (mặc định 0)
-     * @param size Số bản ghi mỗi trang (mặc định 10)
-     * @return Page chứa danh sách SingleMovieStream khớp với từ khóa
-     */
     public Page<SingleMovieStream> searchFileStreams(String search, int page, int size) {
         try {
             logger.debug("Tìm kiếm file streams với từ khóa: {}, page: {}, size: {}", search, page, size);
@@ -210,24 +204,5 @@ public class FileUploadService {
         }
 
         return uniqueFileName;
-    }
-
-    private void sendKafkaMessage(String action, Long fileId, String fileName, String fileUrl, String contentType) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("fileId", fileId != null ? fileId : "");
-        payload.put("fileName", fileName != null ? fileName : "");
-        payload.put("fileUrl", fileUrl != null ? fileUrl : "");
-        payload.put("contentType", contentType != null ? contentType : "");
-        payload.put("action", action);
-
-        KafkaMessage kafkaMessage = new KafkaMessage("file-upload", action, null, payload);
-        try {
-            String messageJson = objectMapper.writeValueAsString(kafkaMessage);
-            logger.debug("Sending Kafka message: action={}, payload={}", action, messageJson);
-            kafkaProducerService.sendMessage("file-uploaded-topic", messageJson);
-        } catch (Exception e) {
-            logger.error("Failed to send Kafka message for action {}: {}", action, e.getMessage());
-            throw new RuntimeException("Failed to send Kafka message: " + e.getMessage(), e);
-        }
     }
 }

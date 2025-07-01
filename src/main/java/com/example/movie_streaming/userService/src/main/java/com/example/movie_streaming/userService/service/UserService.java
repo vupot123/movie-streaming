@@ -200,6 +200,20 @@ public class UserService {
         });
     }
 
+    public boolean isFavorite(String username, Long movieId) {
+        logger.debug("Kiểm tra trạng thái yêu thích cho người dùng: {}, movieId: {}", username, movieId);
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> {
+                    logger.warn("Không tìm thấy người dùng: {}", username);
+                    return new ResourceNotFoundException("Người dùng không tồn tại");
+                });
+
+        boolean isFavorite = favoriteRepository.findByUserAndMovieId(user, movieId).isPresent();
+        logger.info("Kiểm tra trạng thái yêu thích thành công: user={}, movieId={}, isLiked={}", username, movieId, isFavorite);
+        return isFavorite;
+    }
+
     public Map<String, Object> getUserDetail(String username, Pageable pageable) {
         logger.debug("Lấy thông tin chi tiết người dùng: {} với phân trang", username);
 
