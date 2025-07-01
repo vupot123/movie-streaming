@@ -18,7 +18,9 @@ import com.example.movie_streaming.movieService.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +43,12 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public Page<CollectionFullResponse> getAllCollections(Pageable pageable) {
-        return collectionRepo.findAll(pageable).map(this::toFullResponse);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        return collectionRepo.findAll(sortedPageable).map(this::toFullResponse);
     }
 
     @Transactional(readOnly = true)
@@ -143,7 +150,12 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public Page<CollectionResponse> getFeaturedCollections(Pageable pageable) {
-        return collectionRepo.findByFeaturedTrue(pageable).map(this::toResponse);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        return collectionRepo.findByFeaturedTrue(sortedPageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -205,6 +217,21 @@ public class CollectionService {
                 .name(collection.getName())
                 .featured(collection.getFeatured())
                 .movieIDs(movieIds)
+                .build();
+    }
+
+    private CollectionFullResponse toFullResponse(Collection collection) {
+        List<CollectionMovie> collectionMovies = collectionMovieRepo.findAllByCollectionId(collection.getId());
+
+        List<Movie> movies = collectionMovies.stream()
+                .map(CollectionMovie::getMovie)
+                .toList();
+
+        return CollectionFullResponse.builder()
+                .id(collection.getId())
+                .name(collection.getName())
+                .featured(collection.getFeatured())
+                .movies(movies.stream().map(movieMapper::toResponse).toList())
                 .build();
     }
 }

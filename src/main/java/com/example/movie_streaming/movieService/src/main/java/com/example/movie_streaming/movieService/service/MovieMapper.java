@@ -31,7 +31,7 @@ public class MovieMapper {
                 .smallBanner(Optional.ofNullable(movie.getBanner()).map(MovieBanner::getSmallBanner).orElse(null))
                 .bigBanner(Optional.ofNullable(movie.getBanner()).map(MovieBanner::getLargeBanner).orElse(null))
                 .actors(mapActors(movie.getMovieActors()))
-                .genreNames(mapGenres(movie.getMovieGenres()))
+                .genreNames(mapGenreNames(movie.getMovieGenres()))
                 .countries(Optional.ofNullable(movie.getCountry()).map(Country::getName).orElse(null))
                 .seasons(mapSeasons(movie.getSeasons()))
                 .collections(mapCollections(movie.getCollectionMovies()))
@@ -108,12 +108,13 @@ public class MovieMapper {
                 .collect(Collectors.toSet());
     }
 
-    private Set<GenreResponse> mapGenres(Set<MovieGenre> movieGenres) {
+    private Set<String> mapGenreNames(Set<MovieGenre> movieGenres) {
         if (movieGenres == null) return Set.of();
         return movieGenres.stream()
-                .map(g -> new GenreResponse(g.getGenre().getId(), g.getGenre().getName()))
+                .map(mg -> mg.getGenre().getName())
                 .collect(Collectors.toSet());
     }
+
 
     private Set<SeasonResponse> mapSeasons(Set<Season> seasons) {
         if (seasons == null) return Set.of();

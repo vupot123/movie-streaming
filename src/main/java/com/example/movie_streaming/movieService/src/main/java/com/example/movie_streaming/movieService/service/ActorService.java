@@ -14,7 +14,9 @@ import com.example.movie_streaming.movieService.repository.ActorRepository;
 import com.example.movie_streaming.movieService.repository.MovieActorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,12 +35,17 @@ public class ActorService {
 
     @Transactional(readOnly = true)
     public Page<ActorFullResponse> getAllActors(Pageable pageable, String keyword) {
-        Page<Actor> actors;
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
 
+        Page<Actor> actors;
         if (keyword == null || keyword.trim().isEmpty()) {
-            actors = actorRepository.findAll(pageable);
+            actors = actorRepository.findAll(sortedPageable);
         } else {
-            actors = actorRepository.findByNameContainingIgnoreCase(keyword.trim(), pageable);
+            actors = actorRepository.findByNameContainingIgnoreCase(keyword.trim(), sortedPageable);
         }
 
         return actors.map(actor -> {
@@ -61,7 +68,7 @@ public class ActorService {
 
     @Transactional
     public ActorResponse create(ActorRequest request) {
-        Actor actor = movieMapper.toActorEntity(request); // Giả sử movieMapper hỗ trợ ánh xạ
+        Actor actor = movieMapper.toActorEntity(request);
         Actor saved = actorRepository.save(actor);
 
         Map<String, Object> payload = new HashMap<>();
@@ -104,13 +111,13 @@ public class ActorService {
 
     @Transactional
     public void delete(Long id) {
-        // Bước 1: Xóa các bản ghi liên quan trong movie_actor trước
+        // Xóa các bản ghi liên quan trong movie_actor trước
         List<MovieActor> movieActors = movieActorRepository.findByActorId(id);
         if (!movieActors.isEmpty()) {
             movieActorRepository.deleteAll(movieActors);
         }
 
-        // Bước 2: Xóa actor
+        // Xóa actor
         Actor actor = actorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Not found actor ID: " + id));
         actorRepository.delete(actor);

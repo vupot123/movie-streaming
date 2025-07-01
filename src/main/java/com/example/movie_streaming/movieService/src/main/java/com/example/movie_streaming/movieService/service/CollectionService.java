@@ -18,7 +18,9 @@ import com.example.movie_streaming.movieService.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,7 +43,12 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public Page<CollectionFullResponse> getAllCollections(Pageable pageable) {
-        return collectionRepo.findAll(pageable).map(this::toFullResponse);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        return collectionRepo.findAll(sortedPageable).map(this::toFullResponse);
     }
 
     @Transactional(readOnly = true)
@@ -143,13 +150,24 @@ public class CollectionService {
 
     @Transactional(readOnly = true)
     public Page<CollectionResponse> getFeaturedCollections(Pageable pageable) {
-        return collectionRepo.findByFeaturedTrue(pageable).map(this::toResponse);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        return collectionRepo.findByFeaturedTrue(sortedPageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public Page<CollectionResponse> getNotFeaturedCollections(Pageable pageable) {
-        return collectionRepo.findByFeaturedFalse(pageable).map(this::toResponse);
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "id")
+        );
+        return collectionRepo.findByFeaturedFalse(sortedPageable).map(this::toResponse);
     }
+
 
     @Transactional
     public void deleteCollection(Long id) {

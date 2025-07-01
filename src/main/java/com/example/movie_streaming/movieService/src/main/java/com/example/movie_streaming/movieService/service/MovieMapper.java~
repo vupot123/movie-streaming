@@ -14,10 +14,166 @@ import java.util.stream.Collectors;
 @Component
 @RequiredArgsConstructor
 public class MovieMapper {
+//
+//    private final ActorMapper actorMapper;
+//
+//    public MovieResponse toResponse(Movie movie) {
+//        return MovieResponse.builder()
+//                .id(movie.getId())
+//                .title(movie.getTitle())
+//                .subtitle(movie.getSubtitle())
+//                .type(movie.getType() != null ? movie.getType().toString() : null)
+//                .year(movie.getYear())
+//                .duration(movie.getDuration())
+//                .intro(movie.getIntro())
+//                .ageRating(movie.getAgeRating())
+//                .views(movie.getViews())
+//                .smallBanner(Optional.ofNullable(movie.getBanner()).map(MovieBanner::getSmallBanner).orElse(null))
+//                .bigBanner(Optional.ofNullable(movie.getBanner()).map(MovieBanner::getLargeBanner).orElse(null))
+//                .actors(mapActors(movie.getMovieActors()))
+//                .genreNames(mapGenreNames(movie.getMovieGenres()))
+//                .countries(Optional.ofNullable(movie.getCountry()).map(Country::getName).orElse(null))
+//                .seasons(mapSeasons(movie.getSeasons()))
+//                .collections(mapCollections(movie.getCollectionMovies()))
+//                .build();
+//    }
+//
+//    public List<MovieResponse> mapMovieActorsToMovieResponses(Set<MovieActor> movieActors) {
+//        if (movieActors == null) return List.of();
+//        return movieActors.stream()
+//                .map(ma -> toResponse(ma.getMovie()))
+//                .toList();
+//    }
+//
+//    private Set<CollectionResponse> mapCollections(Set<CollectionMovie> collectionMovies) {
+//        if (collectionMovies == null) return Set.of();
+//
+//        return collectionMovies.stream()
+//                .map(cm -> {
+//                    Collection collection = cm.getCollection();
+//                    Set<Long> movieIds = collection.getCollectionMovies() != null
+//                            ? collection.getCollectionMovies().stream()
+//                            .map(c -> c.getMovie().getId())
+//                            .collect(Collectors.toSet())
+//                            : Set.of();
+//
+//                    return CollectionResponse.builder()
+//                            .id(collection.getId())
+//                            .name(collection.getName())
+//                            .featured(collection.getFeatured())
+//                            .movieIDs(new ArrayList<>(movieIds))
+//                            .build();
+//                })
+//                .collect(Collectors.toSet());
+//    }
+//
+//    private Set<CollectionResponse> mapCollectionsBasic(Set<CollectionMovie> collectionMovies) {
+//        if (collectionMovies == null) return Set.of();
+//
+//        return collectionMovies.stream()
+//                .map(cm -> {
+//                    Collection collection = cm.getCollection();
+//                    return CollectionResponse.builder()
+//                            .id(collection.getId())
+//                            .name(collection.getName())
+//                            .featured(collection.getFeatured())
+//                            .movieIDs(null)
+//                            .build();
+//                })
+//                .collect(Collectors.toSet());
+//    }
+//
+//    private List<MovieTrailerResponse> mapTrailers(Set<MovieTrailer> trailers) {
+//        if (trailers == null) return List.of();
+//        return trailers.stream()
+//                .map(t -> new MovieTrailerResponse(t.getId(), t.getMovie().getId(), t.getUrl()))
+//                .toList();
+//    }
+//
+//    private Set<MovieBannerResponse> mapBanners(Set<MovieBanner> banners) {
+//        if (banners == null) return Set.of();
+//        return banners.stream()
+//                .map(b -> new MovieBannerResponse(
+//                        b.getId(),
+//                        b.getMovie().getId(),
+//                        b.getSmallBanner(),
+//                        b.getLargeBanner()))
+//                .collect(Collectors.toSet());
+//    }
+//
+//    private Set<ActorResponse> mapActors(Set<MovieActor> movieActors) {
+//        if (movieActors == null) return Set.of();
+//        return movieActors.stream()
+//                .map(ma -> actorMapper.toResponse(ma.getActor()))
+//                .collect(Collectors.toSet());
+//    }
+//
+//    private Set<String> mapGenreNames(Set<MovieGenre> movieGenres) {
+//        if (movieGenres == null) return Set.of();
+//        return movieGenres.stream()
+//                .map(mg -> mg.getGenre().getName())
+//                .collect(Collectors.toSet());
+//    }
+//
+//
+//    private Set<SeasonResponse> mapSeasons(Set<Season> seasons) {
+//        if (seasons == null) return Set.of();
+//        return seasons.stream()
+//                .map(s -> new SeasonResponse(
+//                        s.getId(),
+//                        s.getMovie().getId(),
+//                        s.getSeasonNumber(),
+//                        s.getName(),
+//                        mapEpisodes(s.getEpisodes(), s.getId())
+//                ))
+//                .sorted(Comparator.comparing(SeasonResponse::getSeasonNumber))
+//                .collect(Collectors.toCollection(LinkedHashSet::new));
+//    }
+//
+//    private Set<EpisodeResponse> mapEpisodes(Set<Episode> episodes, Long seasonId) {
+//        if (episodes == null) return Set.of();
+//        return episodes.stream()
+//                .map(e -> new EpisodeResponse(
+//                        e.getId(),
+//                        seasonId,
+//                        e.getEpisodeNumber(),
+//                        e.getDubbedUrl(),
+//                        e.getSubtitleUrl()
+//                ))
+//                .sorted(Comparator.comparing(EpisodeResponse::getEpisodeNumber))
+//                .collect(Collectors.toCollection(LinkedHashSet::new));
+//    }
+//
+//    public Actor toActorEntity(ActorRequest request) {
+//        Gender gender = null;
+//        if (request.getGender() != null) {
+//            try {
+//                gender = Gender.valueOf(request.getGender().trim().toUpperCase());
+//            } catch (IllegalArgumentException e) {
+//                throw new IllegalArgumentException("Giới tính không hợp lệ: " + request.getGender());
+//            }
+//        }
+//
+//        return Actor.builder()
+//                .name(request.getName())
+//                .gender(gender)
+//                .dob(request.getDob())
+//                .avatarUrl(request.getAvatarUrl())
+//                .bio(request.getBio())
+//                .build();
+//    }
 
     private final ActorMapper actorMapper;
 
     public MovieResponse toResponse(Movie movie) {
+        // Lưu trữ kết quả để tránh truy vấn lặp lại
+        MovieBanner banner = movie.getBanner();
+        Set<ActorResponse> actors = mapActors(movie.getMovieActors());
+        Set<String> genreNames = mapGenreNames(movie.getMovieGenres());
+        String countryName = Optional.ofNullable(movie.getCountry()).map(Country::getName).orElse(null);
+        Set<SeasonResponse> seasons = mapSeasons(movie.getSeasons());
+        Set<CollectionResponse> collections = mapCollections(movie.getCollectionMovies());
+
         return MovieResponse.builder()
                 .id(movie.getId())
                 .title(movie.getTitle())
@@ -28,24 +184,34 @@ public class MovieMapper {
                 .intro(movie.getIntro())
                 .ageRating(movie.getAgeRating())
                 .views(movie.getViews())
-                .smallBanner(Optional.ofNullable(movie.getBanner()).map(MovieBanner::getSmallBanner).orElse(null))
-                .bigBanner(Optional.ofNullable(movie.getBanner()).map(MovieBanner::getLargeBanner).orElse(null))
-                .actors(mapActors(movie.getMovieActors()))
-                .genreNames(mapGenres(movie.getMovieGenres()))
-                .countries(Optional.ofNullable(movie.getCountry()).map(Country::getName).orElse(null))
-                .seasons(mapSeasons(movie.getSeasons()))
-                .collections(mapCollections(movie.getCollectionMovies()))
+                .smallBanner(banner != null ? banner.getSmallBanner() : null)
+                .bigBanner(banner != null ? banner.getLargeBanner() : null)
+                .actors(actors)
+                .genreNames(genreNames)
+                .countries(countryName)
+                .seasons(seasons)
+                .collections(collections)
                 .build();
     }
 
+    public List<MovieResponse> mapMovieActorsToMovieResponses(Set<MovieActor> movieActors) {
+        if (movieActors == null || movieActors.isEmpty()) return List.of();
+        return movieActors.stream()
+                .filter(ma -> ma.getMovie() != null)
+                .map(ma -> toResponse(ma.getMovie()))
+                .toList();
+    }
+
     private Set<CollectionResponse> mapCollections(Set<CollectionMovie> collectionMovies) {
-        if (collectionMovies == null) return Set.of();
+        if (collectionMovies == null || collectionMovies.isEmpty()) return Set.of();
 
         return collectionMovies.stream()
+                .filter(cm -> cm.getCollection() != null)
                 .map(cm -> {
                     Collection collection = cm.getCollection();
                     Set<Long> movieIds = collection.getCollectionMovies() != null
                             ? collection.getCollectionMovies().stream()
+                            .filter(c -> c.getMovie() != null)
                             .map(c -> c.getMovie().getId())
                             .collect(Collectors.toSet())
                             : Set.of();
@@ -61,9 +227,10 @@ public class MovieMapper {
     }
 
     private Set<CollectionResponse> mapCollectionsBasic(Set<CollectionMovie> collectionMovies) {
-        if (collectionMovies == null) return Set.of();
+        if (collectionMovies == null || collectionMovies.isEmpty()) return Set.of();
 
         return collectionMovies.stream()
+                .filter(cm -> cm.getCollection() != null)
                 .map(cm -> {
                     Collection collection = cm.getCollection();
                     return CollectionResponse.builder()
@@ -77,15 +244,17 @@ public class MovieMapper {
     }
 
     private List<MovieTrailerResponse> mapTrailers(Set<MovieTrailer> trailers) {
-        if (trailers == null) return List.of();
+        if (trailers == null || trailers.isEmpty()) return List.of();
         return trailers.stream()
+                .filter(t -> t.getMovie() != null)
                 .map(t -> new MovieTrailerResponse(t.getId(), t.getMovie().getId(), t.getUrl()))
                 .toList();
     }
 
     private Set<MovieBannerResponse> mapBanners(Set<MovieBanner> banners) {
-        if (banners == null) return Set.of();
+        if (banners == null || banners.isEmpty()) return Set.of();
         return banners.stream()
+                .filter(b -> b.getMovie() != null)
                 .map(b -> new MovieBannerResponse(
                         b.getId(),
                         b.getMovie().getId(),
@@ -95,22 +264,25 @@ public class MovieMapper {
     }
 
     private Set<ActorResponse> mapActors(Set<MovieActor> movieActors) {
-        if (movieActors == null) return Set.of();
+        if (movieActors == null || movieActors.isEmpty()) return Set.of();
         return movieActors.stream()
+                .filter(ma -> ma.getActor() != null)
                 .map(ma -> actorMapper.toResponse(ma.getActor()))
                 .collect(Collectors.toSet());
     }
 
-    private Set<GenreResponse> mapGenres(Set<MovieGenre> movieGenres) {
-        if (movieGenres == null) return Set.of();
+    private Set<String> mapGenreNames(Set<MovieGenre> movieGenres) {
+        if (movieGenres == null || movieGenres.isEmpty()) return Set.of();
         return movieGenres.stream()
-                .map(g -> new GenreResponse(g.getGenre().getId(), g.getGenre().getName()))
+                .filter(mg -> mg.getGenre() != null)
+                .map(mg -> mg.getGenre().getName())
                 .collect(Collectors.toSet());
     }
 
     private Set<SeasonResponse> mapSeasons(Set<Season> seasons) {
-        if (seasons == null) return Set.of();
+        if (seasons == null || seasons.isEmpty()) return Set.of();
         return seasons.stream()
+                .filter(s -> s.getMovie() != null)
                 .map(s -> new SeasonResponse(
                         s.getId(),
                         s.getMovie().getId(),
@@ -123,7 +295,7 @@ public class MovieMapper {
     }
 
     private Set<EpisodeResponse> mapEpisodes(Set<Episode> episodes, Long seasonId) {
-        if (episodes == null) return Set.of();
+        if (episodes == null || episodes.isEmpty()) return Set.of();
         return episodes.stream()
                 .map(e -> new EpisodeResponse(
                         e.getId(),
@@ -138,7 +310,7 @@ public class MovieMapper {
 
     public Actor toActorEntity(ActorRequest request) {
         Gender gender = null;
-        if (request.getGender() != null) {
+        if (request.getGender() != null && !request.getGender().trim().isBlank()) {
             try {
                 gender = Gender.valueOf(request.getGender().trim().toUpperCase());
             } catch (IllegalArgumentException e) {
@@ -147,11 +319,12 @@ public class MovieMapper {
         }
 
         return Actor.builder()
-                .name(request.getName())
+                .name(request.getName() != null ? request.getName().trim() : null)
                 .gender(gender)
                 .dob(request.getDob())
-                .avatarUrl(request.getAvatarUrl())
-                .bio(request.getBio())
+                .avatarUrl(request.getAvatarUrl() != null ? request.getAvatarUrl().trim() : null)
+                .bio(request.getBio() != null ? request.getBio().trim() : null)
                 .build();
     }
+
 }

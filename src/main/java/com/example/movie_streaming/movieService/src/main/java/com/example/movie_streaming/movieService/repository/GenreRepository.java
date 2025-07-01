@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface GenreRepository extends JpaRepository<Genre, Integer> {
     Optional<Genre> findByNameIgnoreCase(String name);
+
 }

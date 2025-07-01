@@ -24,7 +24,7 @@ public class MovieResponse {
     private String bigBanner;
     private Set<ActorResponse> actors;
     private Set<CollectionResponse> collections;
-    private Set<GenreResponse> genreNames;
+    private Set<String> genreNames;
     private String countries;
     private Set<SeasonResponse> seasons;
     //private String posterUrl;
