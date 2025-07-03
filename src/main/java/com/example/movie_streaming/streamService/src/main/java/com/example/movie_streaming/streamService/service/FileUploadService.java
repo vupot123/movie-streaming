@@ -67,13 +67,14 @@ public class FileUploadService {
         // Tạo URL công khai của file
         String fileUrl = "https://storage.googleapis.com/" + bucketName + "/" + uniqueFileName;
 
-        // Lưu thông tin file vào database ngay lập tức
+        // Lưu thông tin file vào database ngay lập tức, bao gồm dung lượng
         SingleMovieStream stream = new SingleMovieStream();
         stream.setFileName(uniqueFileName);
         stream.setFileUrl(fileUrl);
+        stream.setFileSize(file.getSize()); // Lấy dung lượng file từ MultipartFile
         try {
             singleMovieStreamRepository.save(stream);
-            logger.info("Uploaded file {} to GCS and saved to database. URL: {}", uniqueFileName, fileUrl);
+            logger.info("Uploaded file {} to GCS and saved to database. URL: {}, Size: {} bytes", uniqueFileName, fileUrl, file.getSize());
         } catch (Exception e) {
             logger.error("Failed to save file {} to database: {}", uniqueFileName, e.getMessage(), e);
             // Xóa file trên GCS nếu lưu database thất bại
