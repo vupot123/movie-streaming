@@ -168,24 +168,28 @@ public class CollectionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CollectionResponse> getFeaturedCollections(Pageable pageable) {
+    public Page<CollectionFullResponse> getFeaturedCollections(Pageable pageable) {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.ASC, "id")
         );
-        return collectionRepo.findByFeaturedTrue(sortedPageable).map(this::toResponse);
+        return collectionRepo.findByFeaturedTrue(sortedPageable)
+                .map(this::toFullResponse);
     }
 
+
     @Transactional(readOnly = true)
-    public Page<CollectionResponse> getNotFeaturedCollections(Pageable pageable) {
+    public Page<CollectionFullResponse> getNotFeaturedCollections(Pageable pageable) {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.ASC, "id")
         );
-        return collectionRepo.findByFeaturedFalse(sortedPageable).map(this::toResponse);
+        return collectionRepo.findByFeaturedFalse(sortedPageable)
+                .map(this::toFullResponse);
     }
+
 
 
     @Transactional

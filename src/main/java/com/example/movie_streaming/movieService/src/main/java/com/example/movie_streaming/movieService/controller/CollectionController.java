@@ -76,14 +76,14 @@ public class CollectionController {
     }
 
     @GetMapping("/featured")
-    public ResponseEntity<ApiResponse<Page<CollectionResponse>>> getFeaturedCollections(Pageable pageable) {
-        Page<CollectionResponse> collections = collectionService.getFeaturedCollections(pageable);
+    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> getFeaturedCollections(Pageable pageable) {
+        Page<CollectionFullResponse> collections = collectionService.getFeaturedCollections(pageable);
         return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched featured successfully", collections));
     }
 
     @GetMapping("/not-featured")
-    public ResponseEntity<ApiResponse<Page<CollectionResponse>>> getNotFeaturedCollections(Pageable pageable) {
-        Page<CollectionResponse> collections = collectionService.getNotFeaturedCollections(pageable);
+    public ResponseEntity<ApiResponse<Page<CollectionFullResponse>>> getNotFeaturedCollections(Pageable pageable) {
+        Page<CollectionFullResponse> collections = collectionService.getNotFeaturedCollections(pageable);
         return ResponseEntity.ok(ApiResponse.success(200, "Collection fetched non-featured successfully", collections));
     }
 
